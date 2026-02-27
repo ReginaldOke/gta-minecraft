@@ -935,7 +935,7 @@
       return 'OCEAN';
     }
     const TYPES = {
-      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25
+      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25, YELLOW: 26, GREEN: 27
     };
     const MATERIALS = {};
     const MAX_PARTICLES = 300;
@@ -1736,6 +1736,8 @@
       MATERIALS[TYPES.RED] = new THREE.MeshStandardMaterial({ color: 0xaa1111, roughness: 0.8 });
       MATERIALS[TYPES.SIDEWALK] = buildPBRMaterial(createTex('SIDEWALK'), { roughness: 0.85, metalness: 0.05 });
       MATERIALS[TYPES.RAIL] = buildPBRMaterial(createTex('RAIL'), { roughness: 0.3, metalness: 0.9 });
+      MATERIALS[TYPES.YELLOW] = new THREE.MeshStandardMaterial({ color: 0xddaa00, roughness: 0.8, emissive: 0xddaa00, emissiveIntensity: 0.3 });
+      MATERIALS[TYPES.GREEN] = new THREE.MeshStandardMaterial({ color: 0x22aa22, roughness: 0.8, emissive: 0x22aa22, emissiveIntensity: 0.3 });
 
       let partGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
       for (let i = 0; i < MAX_PARTICLES; i++) {
@@ -2153,12 +2155,34 @@
               }
             } else if (isRoad) {
               this.setBlock(lx, 0, lz, TYPES.ROAD);
-              // Traffic lights at intersection corners only (small, slim poles)
+              // Traffic lights - one per intersection (only one corner)
               if (isIntersection && zone !== 'RURAL' && zone !== 'OCEAN' && zone !== 'SUBURBAN') {
-                let isCorner = (rxMod === 0 || rxMod === ROAD_WIDTH - 1) && (rzMod === 0 || rzMod === ROAD_WIDTH - 1);
-                if (isCorner) {
-                  for (let ty = 1; ty <= 4; ty++) this.setBlock(lx, ty, lz, TYPES.STEEL);
-                  this.setBlock(lx, 5, lz, TYPES.RED);
+                if (rxMod === ROAD_WIDTH - 1 && rzMod === ROAD_WIDTH - 1) {
+                  for (let ty = 1; ty <= 5; ty++) this.setBlock(lx, ty, lz, TYPES.STEEL);
+                  this.setBlock(lx, 6, lz, TYPES.RED);
+                  this.setBlock(lx, 7, lz, TYPES.YELLOW);
+                  this.setBlock(lx, 8, lz, TYPES.GREEN);
+                }
+              }
+              // Road ramps/jumps for fun driving (not on intersections, not near special buildings)
+              if (!isIntersection && !isBank && !isStore && !isCarpark && !isAlley && zone !== 'OCEAN') {
+                let rampHash = hash2D(Math.floor(wx / 48) * 100, Math.floor(wz / 48) * 100);
+                // ~15% of road chunks get a ramp on one road
+                if (rampHash > 0.85) {
+                  let isXOnly = isXRoad && !isZRoad;
+                  let isZOnly = isZRoad && !isXRoad;
+                  // Ramp along X roads (player drives along Z), placed mid-chunk
+                  if (isXOnly && rzMod >= 20 && rzMod <= 24) {
+                    let rampLocal = rzMod - 20;
+                    let rampY = rampLocal <= 2 ? rampLocal : (4 - rampLocal);
+                    if (rampY > 0) this.setBlock(lx, rampY, lz, TYPES.CONCRETE);
+                  }
+                  // Ramp along Z roads (player drives along X), placed mid-chunk
+                  if (isZOnly && rxMod >= 20 && rxMod <= 24) {
+                    let rampLocal = rxMod - 20;
+                    let rampY = rampLocal <= 2 ? rampLocal : (4 - rampLocal);
+                    if (rampY > 0) this.setBlock(lx, rampY, lz, TYPES.CONCRETE);
+                  }
                 }
               }
             } else {
@@ -2338,16 +2362,18 @@
                         if (Math.random() < 0.02) { this.setBlock(lx, y + 1, lz, TYPES.WOOD); this.setBlock(lx, y + 2, lz, TYPES.WOOD); }
                       }
                     } else {
-                      if (lx >= bStartX + 2 && lx <= bStartX + 3 && lz >= bStartZ + 2 && lz <= bStartZ + 6) {
+                      // Staircase: wider (3 blocks) with solid fill underneath each step
+                      if (lx >= bStartX + 2 && lx <= bStartX + 4 && lz >= bStartZ + 2 && lz <= bStartZ + 6) {
                         let localY = (y - 1) % 5;
                         let expectedZ = bStartZ + 2 + localY;
-                        if (lz === expectedZ) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        // Place step block at the correct Z for this Y level
+                        if (lz <= expectedZ) this.setBlock(lx, y, lz, TYPES.STEEL);
                       }
                     }
                   }
                 } else {
-                  // Street furniture (lamp posts)
-                  if (lx === margin - 2 && lz % 16 === 0 && zone !== 'SUBURBAN') {
+                  // Street furniture (lamp posts) - on sidewalk, not road
+                  if (lx === margin && lz % 16 === 0 && zone !== 'SUBURBAN') {
                     for (let y = 1; y <= 5; y++) this.setBlock(lx, y, lz, TYPES.STEEL);
                     this.setBlock(lx, 6, lz, TYPES.LIGHT);
                   }
@@ -2451,14 +2477,40 @@
 
             // Highway overpasses (downtown and urban only)
             if (zone === 'DOWNTOWN' || zone === 'URBAN') {
-              let isHighwayX = Math.abs(wx % 128) < 12, isHighwayZ = Math.abs(wz % 128) < 12;
+              let hxMod = ((wx % 128) + 128) % 128, hzMod = ((wz % 128) + 128) % 128;
+              let isHighwayX = hxMod < 8, isHighwayZ = hzMod < 8;
+              // Ramp zones: gradual slope from y=0 to y=15 over ~15 blocks at each end
+              let rampX = hxMod >= 8 && hxMod < 23, rampXdown = hxMod >= 113 && hxMod < 128;
+              let rampZ = hzMod >= 8 && hzMod < 23, rampZdown = hzMod >= 113 && hzMod < 128;
               if (isHighwayX || isHighwayZ) {
-                this.setBlock(lx, 15, lz, TYPES.HIGHWAY);
+                // Elevated highway deck with road markings
+                this.setBlock(lx, 15, lz, TYPES.ROAD);
+                // Barriers on edges
+                let xEdge = isHighwayX && (hxMod === 0 || hxMod === 7);
+                let zEdge = isHighwayZ && (hzMod === 0 || hzMod === 7);
+                if (xEdge || zEdge) {
+                  this.setBlock(lx, 16, lz, TYPES.CONCRETE);
+                }
+                // Support pillars
                 if ((wx % 24 === 0 && isHighwayX && !isHighwayZ) || (wz % 24 === 0 && isHighwayZ && !isHighwayX)) {
                   if (!isWater && !isRoad) {
                     for (let y = 1; y < 15; y++) this.setBlock(lx, y, lz, TYPES.CONCRETE);
                   }
                 }
+              }
+              // On-ramps (X direction highways)
+              if ((rampX || rampXdown) && hzMod >= 2 && hzMod < 6) {
+                let rampProgress = rampX ? (hxMod - 8) / 14.0 : (128 - hxMod) / 14.0;
+                let rampY = Math.max(1, Math.floor(rampProgress * 15));
+                this.setBlock(lx, rampY, lz, TYPES.ROAD);
+                if (hzMod === 2 || hzMod === 5) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
+              }
+              // On-ramps (Z direction highways)
+              if ((rampZ || rampZdown) && hxMod >= 2 && hxMod < 6) {
+                let rampProgress = rampZ ? (hzMod - 8) / 14.0 : (128 - hzMod) / 14.0;
+                let rampY = Math.max(1, Math.floor(rampProgress * 15));
+                this.setBlock(lx, rampY, lz, TYPES.ROAD);
+                if (hxMod === 2 || hxMod === 5) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
               }
             }
           }
@@ -3571,12 +3623,17 @@
         let pSpeed = inWater ? 6 : 15;
         let stepX = dir.x * pSpeed * dt, stepZ = dir.z * pSpeed * dt;
         let pCheckY = Math.floor(player.pos.y + 0.5);
+        // Step-up collision: try 1 block, then 2 blocks (for stairs/ramps)
         if (getBlock(player.pos.x + stepX, pCheckY, player.pos.z) !== TYPES.EMPTY) {
           if (getBlock(player.pos.x + stepX, pCheckY + 1, player.pos.z) === TYPES.EMPTY && !inWater) player.pos.y += 1;
+          else if (getBlock(player.pos.x + stepX, pCheckY + 1, player.pos.z) !== TYPES.EMPTY &&
+                   getBlock(player.pos.x + stepX, pCheckY + 2, player.pos.z) === TYPES.EMPTY && !inWater) player.pos.y += 2;
           else stepX = 0;
         }
         if (getBlock(player.pos.x, pCheckY, player.pos.z + stepZ) !== TYPES.EMPTY) {
           if (getBlock(player.pos.x, pCheckY + 1, player.pos.z + stepZ) === TYPES.EMPTY && !inWater) player.pos.y += 1;
+          else if (getBlock(player.pos.x, pCheckY + 1, player.pos.z + stepZ) !== TYPES.EMPTY &&
+                   getBlock(player.pos.x, pCheckY + 2, player.pos.z + stepZ) === TYPES.EMPTY && !inWater) player.pos.y += 2;
           else stepZ = 0;
         }
         player.vel.x = stepX / dt || 0; player.vel.z = stepZ / dt || 0;
