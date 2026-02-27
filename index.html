@@ -240,6 +240,7 @@
       width: 280px;
       height: auto;
       min-height: 180px;
+      max-height: 50vh;
       background: #111;
       border-radius: 20px 20px 0 0;
       border: 4px solid #444;
@@ -252,6 +253,7 @@
       z-index: 20;
       color: white;
       box-shadow: -5px 5px 20px rgba(0, 0, 0, 0.6);
+      overflow-y: auto;
     }
 
     #phone-ui.active { bottom: 0; }
@@ -561,6 +563,37 @@
       line-height: 1.6;
       margin: 10px 0;
     }
+
+    #store-ui {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); display: none; z-index: 200;
+      flex-direction: column; align-items: center; justify-content: center; color: white;
+    }
+    .store-title { font-size: 48px; color: #4CAF50; text-shadow: 3px 3px 0 #1b5e20; margin-bottom: 20px; }
+    .store-balance { font-size: 24px; color: #ffcc00; margin-bottom: 20px; }
+    .store-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; max-width: 700px; padding: 10px; }
+    .store-item {
+      background: rgba(255,255,255,0.08); border: 2px solid #333; border-radius: 10px;
+      padding: 15px; width: 140px; text-align: center; cursor: pointer; transition: all 0.2s;
+      pointer-events: auto;
+    }
+    .store-item:hover { border-color: #4CAF50; background: rgba(76,175,80,0.15); }
+    .store-item.owned { border-color: #666; opacity: 0.5; }
+    .store-item.cant-afford { border-color: #600; opacity: 0.6; }
+    .store-item-icon { font-size: 36px; margin-bottom: 8px; }
+    .store-item-name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
+    .store-item-price { font-size: 16px; color: #ffcc00; }
+    .store-close-btn {
+      margin-top: 20px; padding: 12px 40px; font-size: 20px; background: #c62828;
+      color: white; border: none; border-radius: 8px; cursor: pointer; pointer-events: auto;
+    }
+    .store-close-btn:hover { background: #e53935; }
+
+    .float-text {
+      position: absolute; color: #22ff22; font-size: 22px; font-weight: bold;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000; pointer-events: none; z-index: 50;
+      transition: all 1s ease-out; white-space: nowrap;
+    }
   </style>
 </head>
 
@@ -575,13 +608,13 @@
     <div id="phone-text">...</div>
   </div>
 
-  <div id="mission-success">
-    <div class="ms-title" id="ms-title">HEIST SUCCESSFUL!</div>
-    <div class="ms-item" id="ms-item-1"><span class="ms-icon">💰</span> <span>+50000 Cash Stolen</span></div>
-    <div class="ms-item" id="ms-item-2"><span class="ms-icon">❤️</span> <span>Max Health Doubled!</span></div>
-    <div class="ms-item" id="ms-item-3"><span class="ms-icon">🔫</span> <span>Heavy Assault Rifle Unlocked</span></div>
-    <div class="ms-item" id="ms-item-4"><span class="ms-icon">💪</span> <span>Gained Muscle & Tattoos</span></div>
-    <button class="ms-btn" id="ms-btn" onclick="continueGame()">CONTINUE TERRORIZING</button>
+  <div id="mission-success"></div>
+
+  <div id="store-ui">
+    <div class="store-title">WEAPON STORE</div>
+    <div class="store-balance" id="store-balance">$0</div>
+    <div class="store-grid" id="store-grid"></div>
+    <button class="store-close-btn" onclick="closeStore()">LEAVE STORE [ESC]</button>
   </div>
 
   <div id="ui-layer">
@@ -917,10 +950,74 @@
     let keys = { forward: false, backward: false, left: false, right: false, space: false };
     let touchMove = new THREE.Vector2(0, 0);
     let activeChunks = new Map();
-    let mission = { active: false, state: 'INTRO', target: new THREE.Vector3(72, 1, 72), robber: null };
-    let isMouseDown = false; 
-    let bankMarkerGroup, waypointArrow3D;
+    let isMouseDown = false;
+    let bankMarkerGroup, storeMarkerGroup, carparkMarkerGroup, alleyMarkerGroup, waypointArrow3D;
     let currentPhoneMessage = "";
+    let bankCashWad = null, bankTellerNPC = null;
+    let pickups = [];
+    const MAX_PICKUPS = 50;
+
+    // --- Store / Inventory ---
+    const STORE_ITEMS = [
+      { id: 'health_pack', name: 'Health Pack', price: 1000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
+      { id: 'armor', name: 'Body Armor', price: 3000, icon: '🛡️', type: 'consumable', desc: '+2000 max HP' },
+      { id: 'rocket', name: 'Rocket Launcher', price: 8000, icon: '🚀', type: 'weapon', desc: '5-block blast radius!' },
+      { id: 'suit', name: 'Business Suit', price: 1500, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
+      { id: 'balaclava', name: 'Balaclava', price: 500, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
+      { id: 'tattoo', name: 'Sleeve Tattoos', price: 3000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
+      { id: 'spray', name: 'Spray Can', price: 500, icon: '🎨', type: 'tool', desc: 'Tag the city' }
+    ];
+    let playerInventory = new Set();
+    let currentWeapon = 'pistol';
+    let storeOpen = false;
+
+    // --- Multi-Mission System ---
+    const STORE_POS = new THREE.Vector3(-96, 1, 0);
+    const ALLEY_POS = new THREE.Vector3(-60, 1, -80);
+    const CARPARK_POS = new THREE.Vector3(192, 1, -48);
+    const MISSIONS = [
+      { id: 0, name: 'ROB THE BANK', objective: 'MISSION 1: ROB THE BANK',
+        target: [72, 1, 72], reward: 10000,
+        phoneStart: "Boss: Alright kid, your first job is to hit the National Bank. Follow the glowing pillar. Go inside, walk up to the teller desk, and press F to empty the vault. Be ready for the cops.",
+        rewards: [
+          { icon: '💰', text: '+$10,000 Cash Stolen', action: 'cash10k' },
+          { icon: '❤️', text: 'Max Health Doubled!', action: 'health_double' },
+          { icon: '🤵', text: 'Suit & Balaclava Unlocked!', action: 'suit_unlock' }
+        ]},
+      { id: 1, name: 'GETAWAY', objective: 'MISSION 2: STEAL A CAR & ESCAPE',
+        target: [-60, 1, -80], reward: 5000,
+        phoneStart: "Boss: Nice work at the bank! Now jack a car and get to the safe house in the alley. Lose those cops!",
+        rewards: [
+          { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
+          { icon: '🏎️', text: 'Driving Skills Improved!', action: 'drive_skill' }
+        ]},
+      { id: 2, name: 'GEAR UP', objective: 'MISSION 3: VISIT THE WEAPON STORE',
+        target: [-96, 1, 0], reward: 0,
+        phoneStart: "Boss: Time to gear up. Head to the weapon store and buy yourself a rocket launcher. You're gonna need it.",
+        rewards: [
+          { icon: '🚀', text: 'Rocket Launcher Equipped!', action: 'rocket_equip' },
+          { icon: '🏪', text: 'Store Always Open!', action: 'store_open' }
+        ]},
+      { id: 3, name: 'DEMOLITION', objective: 'MISSION 4: DESTROY THE CARPARK',
+        target: [192, 1, -48], reward: 15000,
+        phoneStart: "Boss: See that multi-story carpark? Blow every car in there to smithereens with your new rocket launcher!",
+        rewards: [
+          { icon: '💰', text: '+$15,000 Destruction Pay', action: 'cash15k' },
+          { icon: '💥', text: 'Explosion Expert!', action: 'explosion_expert' }
+        ]},
+      { id: 4, name: 'FINAL HEIST', objective: 'MISSION 5: STEAL A PLANE',
+        target: [AIRPORT_X, 1, AIRPORT_Z + 9], reward: 25000,
+        phoneStart: "Boss: Final job. Get to the airport and steal a plane. Fly it to the island - that's your new hideout. Make me proud, kid.",
+        rewards: [
+          { icon: '💰', text: '+$25,000 Final Payout!', action: 'cash25k' },
+          { icon: '✈️', text: 'Master Criminal!', action: 'master' },
+          { icon: '🏝️', text: 'Island Hideout Unlocked!', action: 'island' }
+        ]}
+    ];
+    let missionIndex = 0;
+    let mission = { active: false, state: 'INTRO', target: new THREE.Vector3(72, 1, 72) };
+    let carparkCarsDestroyed = 0;
+    const CARPARK_CARS_NEEDED = 10;
 
     function showPhoneMessage(text, duration = 20000) {
       currentPhoneMessage = text;
@@ -928,12 +1025,16 @@
       document.getElementById('phone-text').innerText = text;
       let pauseMissionEl = document.getElementById('pause-mission-text');
       if (pauseMissionEl) pauseMissionEl.innerText = text;
+      phone.classList.remove('active');
+      void phone.offsetWidth; // force reflow to restart animation
       phone.classList.add('active');
-      setTimeout(() => phone.classList.remove('active'), duration);
+      if (phone._hideTimer) clearTimeout(phone._hideTimer);
+      phone._hideTimer = setTimeout(() => phone.classList.remove('active'), duration);
     }
-    
+
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
+      if (storeOpen) { closeStore(); return; }
       isPaused = !isPaused;
       if (isPaused) {
         document.exitPointerLock();
@@ -946,46 +1047,193 @@
 
     window.continueGame = function() {
       document.getElementById('mission-success').style.display = 'none';
-      document.getElementById('objective-text').innerText = "EXPLORE. DRIVE. DESTROY.";
+      missionIndex++;
+      if (missionIndex < MISSIONS.length) {
+        startMission(missionIndex);
+      } else {
+        document.getElementById('objective-text').innerText = "ALL MISSIONS COMPLETE! FREE ROAM";
+        mission.active = false; mission.state = 'DONE';
+      }
       isPlaying = true;
       renderer.domElement.requestPointerLock();
     };
 
+    function startMission(index) {
+      let m = MISSIONS[index];
+      missionIndex = index;
+      mission.active = true;
+      mission.state = m.id === 0 ? 'GO_TO_BANK' : m.id === 1 ? 'STEAL_CAR' : m.id === 2 ? 'GO_TO_STORE' : m.id === 3 ? 'GO_TO_CARPARK' : 'GO_TO_AIRPORT';
+      mission.target = new THREE.Vector3(m.target[0], m.target[1], m.target[2]);
+      document.getElementById('objective-text').innerText = m.objective;
+      // Show/hide markers
+      if (bankMarkerGroup) bankMarkerGroup.visible = (index === 0);
+      if (storeMarkerGroup) storeMarkerGroup.visible = (index === 2 || playerInventory.has('store_unlocked'));
+      if (carparkMarkerGroup) carparkMarkerGroup.visible = (index === 3);
+      if (alleyMarkerGroup) alleyMarkerGroup.visible = (index === 1);
+      if (bankCashWad) { bankCashWad.visible = (index === 0); bankCashWad.userData.animating = false; bankCashWad.scale.setScalar(1); }
+      return m;
+    }
+
+    function applyRewardAction(actionId) {
+      switch(actionId) {
+        case 'cash10k': score += 10000; break;
+        case 'cash5k': score += 5000; break;
+        case 'cash15k': score += 15000; break;
+        case 'cash25k': score += 25000; break;
+        case 'health_double': maxHealth = 4000; playerHealth = 4000;
+          player.body.scale.set(1.4, 1.2, 1.2); player.armL.scale.set(1.4, 1.2, 1.4); player.armR.scale.set(1.4, 1.2, 1.4); break;
+        case 'suit_unlock':
+          player.body.material.color.setHex(0x1a1a2e); player.armL.material.color.setHex(0x1a1a2e);
+          player.armR.material.color.setHex(0x1a1a2e); player.legL.material.color.setHex(0x1a1a2e);
+          player.legR.material.color.setHex(0x1a1a2e); player.head.material.color.setHex(0x111111);
+          playerInventory.add('suit'); playerInventory.add('balaclava'); break;
+        case 'drive_skill': break;
+        case 'rocket_equip': currentWeapon = 'rocket'; playerInventory.add('rocket'); applyWeaponVisual('rocket'); break;
+        case 'store_open': playerInventory.add('store_unlocked'); if (storeMarkerGroup) storeMarkerGroup.visible = true; break;
+        case 'explosion_expert': break;
+        case 'master': break;
+        case 'island': break;
+      }
+      updateHUD();
+    }
+
+    function applyWeaponVisual(weaponId) {
+      if (!player || !player.gun) return;
+      if (weaponId === 'rocket') {
+        player.gun.children[0].geometry.dispose();
+        player.gun.children[0].geometry = new THREE.BoxGeometry(0.35, 0.5, 2.0);
+        player.gun.children[0].material.color.setHex(0x222222);
+        if (player.gun.children.length > 1) player.gun.children[1].material.color.setHex(0xff4400);
+        player.projSpeed = 120; player.projSize = 0.6; player.projColor = 0xff4400;
+      }
+    }
+
     function triggerMissionSuccess() {
+      let m = MISSIONS[missionIndex];
       mission.state = 'SUCCESS'; mission.active = false;
       document.exitPointerLock();
-      document.getElementById('waypoint-arrow').style.display = 'none';
-      document.getElementById('mission-success').style.display = 'flex';
-      
-      setTimeout(() => document.getElementById('ms-title').style.transform = 'scale(1)', 100);
-      
-      // Reveal items and visually upgrade character simultaneously
-      setTimeout(() => { 
-        document.getElementById('ms-item-1').style.opacity = '1'; 
-        document.getElementById('ms-item-1').style.transform = 'translateY(0)'; 
-        player.upgrade(1); 
-      }, 1000);
-      
-      setTimeout(() => { 
-        document.getElementById('ms-item-2').style.opacity = '1'; 
-        document.getElementById('ms-item-2').style.transform = 'translateY(0)'; 
-        player.upgrade(2);
-        updateHUD();
-      }, 2000);
-      
-      setTimeout(() => { 
-        document.getElementById('ms-item-3').style.opacity = '1'; 
-        document.getElementById('ms-item-3').style.transform = 'translateY(0)'; 
-        player.upgrade(3);
-      }, 3000);
-      
-      setTimeout(() => { 
-        document.getElementById('ms-item-4').style.opacity = '1'; 
-        document.getElementById('ms-item-4').style.transform = 'translateY(0)'; 
-        player.upgrade(4);
-      }, 4000);
-      
-      setTimeout(() => document.getElementById('ms-btn').style.opacity = '1', 5000);
+      if (waypointArrow3D) waypointArrow3D.visible = false;
+
+      let container = document.getElementById('mission-success');
+      container.innerHTML = '';
+      container.style.display = 'flex'; container.style.flexDirection = 'column';
+      container.style.alignItems = 'center'; container.style.justifyContent = 'center';
+
+      let title = document.createElement('div');
+      title.className = 'ms-title'; title.id = 'ms-title';
+      title.innerText = m.name + ' COMPLETE!';
+      title.style.transform = 'scale(0)';
+      container.appendChild(title);
+      setTimeout(() => title.style.transform = 'scale(1)', 100);
+
+      m.rewards.forEach((r, i) => {
+        let item = document.createElement('div');
+        item.className = 'ms-item';
+        item.innerHTML = '<span class="ms-icon">' + r.icon + '</span> <span>' + r.text + '</span>';
+        container.appendChild(item);
+        setTimeout(() => {
+          item.style.opacity = '1'; item.style.transform = 'translateY(0)';
+          applyRewardAction(r.action);
+        }, 1000 + i * 1000);
+      });
+
+      let btn = document.createElement('button');
+      btn.className = 'ms-btn'; btn.id = 'ms-btn';
+      btn.innerText = missionIndex < MISSIONS.length - 1 ? 'NEXT MISSION' : 'FREE ROAM';
+      btn.onclick = () => continueGame();
+      btn.style.pointerEvents = 'auto';
+      container.appendChild(btn);
+      setTimeout(() => btn.style.opacity = '1', 1000 + m.rewards.length * 1000 + 500);
+    }
+
+    // --- Store System ---
+    window.openStore = function() {
+      storeOpen = true; isPaused = true;
+      document.exitPointerLock();
+      document.getElementById('store-balance').innerText = '$' + score;
+      let grid = document.getElementById('store-grid');
+      grid.innerHTML = '';
+      STORE_ITEMS.forEach(item => {
+        let owned = playerInventory.has(item.id) && item.type !== 'consumable';
+        let canAfford = score >= item.price;
+        let card = document.createElement('div');
+        card.className = 'store-item' + (owned ? ' owned' : (!canAfford ? ' cant-afford' : ''));
+        card.innerHTML = '<div class="store-item-icon">' + item.icon + '</div>' +
+          '<div class="store-item-name">' + item.name + '</div>' +
+          '<div class="store-item-price">' + (owned ? 'OWNED' : '$' + item.price) + '</div>';
+        if (!owned && canAfford) card.onclick = () => buyItem(item.id);
+        grid.appendChild(card);
+      });
+      document.getElementById('store-ui').style.display = 'flex';
+    };
+
+    window.closeStore = function() {
+      storeOpen = false; isPaused = false;
+      document.getElementById('store-ui').style.display = 'none';
+      renderer.domElement.requestPointerLock();
+      // Check if mission 3 requires buying rocket
+      if (missionIndex === 2 && mission.state === 'BUY_WEAPON' && playerInventory.has('rocket')) {
+        triggerMissionSuccess();
+      }
+    };
+
+    function buyItem(itemId) {
+      let item = STORE_ITEMS.find(i => i.id === itemId);
+      if (!item || score < item.price) return;
+      if (playerInventory.has(itemId) && item.type !== 'consumable') return;
+      score -= item.price;
+      if (item.type !== 'consumable') playerInventory.add(itemId);
+      if (itemId === 'health_pack') { playerHealth = maxHealth; }
+      else if (itemId === 'armor') { maxHealth += 2000; playerHealth = maxHealth; }
+      else if (itemId === 'rocket') { currentWeapon = 'rocket'; applyWeaponVisual('rocket'); }
+      else if (itemId === 'suit') {
+        player.body.material.color.setHex(0x1a1a2e); player.armL.material.color.setHex(0x1a1a2e);
+        player.armR.material.color.setHex(0x1a1a2e); player.legL.material.color.setHex(0x1a1a2e); player.legR.material.color.setHex(0x1a1a2e);
+      }
+      else if (itemId === 'balaclava') { player.head.material.color.setHex(0x111111); }
+      else if (itemId === 'tattoo') { player.armL.material.color.setHex(0x2d3a31); player.armR.material.color.setHex(0x2d3a31); }
+      else if (itemId === 'spray') { playerInventory.add('spray'); }
+      updateHUD();
+      showFloatingText('PURCHASED: ' + item.name, player.pos);
+      openStore(); // refresh UI
+    }
+
+    // --- Cash Pickup System ---
+    function spawnCashPickup(x, y, z, amount) {
+      let p = pickups.find(p => !p.active);
+      if (!p) return;
+      p.active = true; p.amount = amount; p.life = 30;
+      p.mesh.position.set(x, y + 1, z);
+      p.mesh.visible = true; p.mesh.scale.setScalar(1);
+    }
+
+    function showFloatingText(text, worldPos) {
+      let v = worldPos.clone().project(camera);
+      let x = (v.x * 0.5 + 0.5) * window.innerWidth;
+      let y = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      let el = document.createElement('div');
+      el.className = 'float-text';
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      el.innerText = text;
+      document.body.appendChild(el);
+      requestAnimationFrame(() => { el.style.transform = 'translateY(-80px)'; el.style.opacity = '0'; });
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    function updatePickups(dt) {
+      let collectPos = currentVehicle ? currentVehicle.pos : player.pos;
+      for (let p of pickups) {
+        if (!p.active) continue;
+        p.mesh.rotation.y += 3 * dt;
+        p.mesh.position.y += Math.sin(Date.now() * 0.004 + p.mesh.position.x) * 0.01;
+        p.life -= dt;
+        if (p.mesh.position.distanceToSquared(collectPos) < 12) {
+          score += p.amount; updateHUD();
+          showFloatingText('+$' + p.amount, p.mesh.position.clone());
+          p.active = false; p.mesh.visible = false;
+        }
+        if (p.life <= 0) { p.active = false; p.mesh.visible = false; }
+      }
     }
 
     function spawnPhysicsParticle(x, y, z, color, baseVel, isSmoke = false) {
@@ -1030,24 +1278,26 @@
       document.getElementById('tutorial-overlay').style.display = 'flex';
       isPlaying = true;
       renderer.domElement.requestPointerLock();
-      mission.active = true; mission.state = 'GO_TO_BANK';
-      // On desktop: delay phone message until after tutorial is dismissed (avoid overlap)
-      // On mobile: show immediately since tutorial is hidden via CSS
+      startMission(0);
       let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
-      let phoneDelay = isMobile ? 500 : 0;
-      pendingPhoneMessage = "Boss: Alright kid, your first job is to hit the National Bank. Follow the glowing pillar. Go inside, walk up to the teller desk, and press F to empty the vault. Be ready for the cops.";
-      if (isMobile) setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), phoneDelay);
+      pendingPhoneMessage = MISSIONS[0].phoneStart;
+      if (isMobile) setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), 500);
     }
     let pendingPhoneMessage = null;
 
     function robBank() {
       if (mission.state !== 'GO_TO_BANK') return;
       mission.state = 'ESCAPING';
-      score += 50000;
       setWantedLevel(Math.max(wantedLevel, 3));
       bankMarkerGroup.visible = false;
       document.getElementById('objective-text').innerText = "ESCAPE THE COPS AND LAY LOW";
       showPhoneMessage("Boss: You got the cash! The alarm is tripped! Get out of there, outrun the cops, and lay low until your heat drops!", 20000);
+      // Animate cash wad to player
+      if (bankCashWad) {
+        bankCashWad.userData.animating = true;
+        bankCashWad.userData.startPos = bankCashWad.position.clone();
+        bankCashWad.userData.animTime = 0;
+      }
       updateHUD();
     }
 
@@ -1423,6 +1673,75 @@
 
       scene.add(bankMarkerGroup);
 
+      // Bank SIGN on building front (double-sided, visible from street)
+      let bankSignFront = new THREE.Mesh(new THREE.PlaneGeometry(18, 5), bankSignMat.clone());
+      bankSignFront.material.side = THREE.DoubleSide;
+      bankSignFront.position.set(72, 18, 55); // Front face of bank
+      scene.add(bankSignFront);
+
+      // Floating 3D Cash Wad above bank teller
+      bankCashWad = new THREE.Group();
+      let cashMat = new THREE.MeshStandardMaterial({ color: 0x22aa22, emissive: 0x115511, emissiveIntensity: 0.4 });
+      for (let i = 0; i < 6; i++) {
+        let bill = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.2, 2.8), cashMat);
+        bill.position.y = i * 0.12; bill.rotation.y = i * 0.08;
+        bankCashWad.add(bill);
+      }
+      let cashBand = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+      cashBand.position.y = 0.3; bankCashWad.add(cashBand);
+      // $ symbol on band
+      let $canvas = document.createElement('canvas'); $canvas.width = 64; $canvas.height = 64;
+      let $ctx = $canvas.getContext('2d'); $ctx.fillStyle = '#22aa22'; $ctx.font = 'bold 50px Arial';
+      $ctx.textAlign = 'center'; $ctx.textBaseline = 'middle'; $ctx.fillText('$', 32, 32);
+      let $tex = new THREE.CanvasTexture($canvas);
+      let $sign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ map: $tex, transparent: true, side: THREE.DoubleSide }));
+      $sign.position.set(0, 0.3, 0.25); bankCashWad.add($sign);
+      bankCashWad.position.set(72, 6, 66);
+      scene.add(bankCashWad);
+
+      // Store Marker (green)
+      storeMarkerGroup = new THREE.Group();
+      storeMarkerGroup.position.copy(STORE_POS).setY(0);
+      let storeCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00aa00, emissiveIntensity: 0.8 }));
+      storeCrystal.position.set(0, 15, 0); storeMarkerGroup.add(storeCrystal);
+      let storePillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
+      storePillar.position.set(0, 75, 0); storeMarkerGroup.add(storePillar);
+      storeMarkerGroup.visible = false;
+      scene.add(storeMarkerGroup);
+
+      // Alley Safe Zone Marker (blue)
+      alleyMarkerGroup = new THREE.Group();
+      alleyMarkerGroup.position.copy(ALLEY_POS).setY(0);
+      let alleyCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2244aa, emissiveIntensity: 0.8 }));
+      alleyCrystal.position.set(0, 15, 0); alleyMarkerGroup.add(alleyCrystal);
+      let alleyPillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
+      alleyPillar.position.set(0, 75, 0); alleyMarkerGroup.add(alleyPillar);
+      alleyMarkerGroup.visible = false;
+      scene.add(alleyMarkerGroup);
+
+      // Carpark Marker (red/orange)
+      carparkMarkerGroup = new THREE.Group();
+      carparkMarkerGroup.position.copy(CARPARK_POS).setY(0);
+      let carparkCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0xff6600, emissive: 0xaa4400, emissiveIntensity: 0.8 }));
+      carparkCrystal.position.set(0, 15, 0); carparkMarkerGroup.add(carparkCrystal);
+      let carparkPillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
+      carparkPillar.position.set(0, 75, 0); carparkMarkerGroup.add(carparkPillar);
+      carparkMarkerGroup.visible = false;
+      scene.add(carparkMarkerGroup);
+
+      // Pickup pool (cash drops)
+      let pickupGeo = new THREE.BoxGeometry(0.7, 0.15, 1.0);
+      let pickupMat = new THREE.MeshStandardMaterial({ color: 0x22aa22, emissive: 0x115511, emissiveIntensity: 0.5 });
+      for (let i = 0; i < MAX_PICKUPS; i++) {
+        let pg = new THREE.Group();
+        let bill = new THREE.Mesh(pickupGeo, pickupMat);
+        pg.add(bill);
+        let band = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.3, 0.15), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+        band.position.y = 0.08; pg.add(band);
+        pg.visible = false; scene.add(pg);
+        pickups.push({ mesh: pg, active: false, amount: 0, life: 0 });
+      }
+
       // 3D Waypoint Arrow (follows camera, points toward mission target in 3D)
       waypointArrow3D = new THREE.Group();
       const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.9 });
@@ -1505,7 +1824,17 @@
         for (let i = 0; i < subSteps; i++) {
           this.pos.add(subStep);
           if (getBlock(this.pos.x, this.pos.y, this.pos.z) !== TYPES.EMPTY && this.pos.y > 0 && getBlock(this.pos.x, this.pos.y, this.pos.z) !== TYPES.WATER) {
-            if (this.isPlayer) triggerDestroy(this.pos.x, this.pos.y, this.pos.z, this.vel, true);
+            if (this.isPlayer && this.isRocket) {
+              // Rocket: 5-block radius explosion
+              for (let dx = -5; dx <= 5; dx++) for (let dy = -5; dy <= 5; dy++) for (let dz = -5; dz <= 5; dz++)
+                if (dx*dx+dy*dy+dz*dz <= 25) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
+              for (let fi = 0; fi < 15; fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
+              for (let si = 0; si < 8; si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
+              // Damage nearby vehicles
+              for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 100) v.takeDamage(300, true);
+            } else if (this.isPlayer) {
+              triggerDestroy(this.pos.x, this.pos.y, this.pos.z, this.vel, true);
+            }
             spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'CONCRETE', this.vel);
             hit = true; break;
           }
@@ -1551,6 +1880,9 @@
         const centerX = startX + CHUNK_SIZE / 2, centerZ = startZ + CHUNK_SIZE / 2;
         const zone = getZone(centerX, centerZ);
         const isBank = (this.cx === 1 && this.cz === 1);
+        const isStore = (this.cx === -2 && this.cz === 0);
+        const isCarpark = (this.cx === 4 && this.cz === -1);
+        const isAlley = (this.cx === -1 && this.cz === -2);
         let h = hash2D(this.cx, this.cz);
 
         // Material palette per chunk
@@ -1563,7 +1895,10 @@
 
         // Zone-specific building height
         let buildingHeight = 0;
-        if (isBank) { buildingHeight = 25; }
+        if (isBank) { buildingHeight = 25; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_BLUE; }
+        else if (isStore) { buildingHeight = 8; wallType = TYPES.BRICK_RED; glassType = TYPES.GLASS_BLUE; }
+        else if (isCarpark) { buildingHeight = 20; wallType = TYPES.CONCRETE; }
+        else if (isAlley) { buildingHeight = 0; } // Open alley/safe zone
         else if (zone === 'DOWNTOWN') {
           buildingHeight = 30 + Math.floor(h * 35);
           if (h > 0.7) { wallType = TYPES.GLASS_DARK; glassType = TYPES.GLASS_BLUE; }
@@ -2169,6 +2504,18 @@
             updateHUD();
           }
           this.voxelGroup.destroyCompletely();
+          if (isPlayerAction && this !== currentVehicle) {
+            spawnCashPickup(this.pos.x, this.pos.y, this.pos.z, 500);
+            // Carpark mission tracking
+            if (missionIndex === 3 && mission.state === 'DESTROY_CARS') {
+              let dx = this.pos.x - CARPARK_POS.x, dz = this.pos.z - CARPARK_POS.z;
+              if (dx*dx + dz*dz < 2500) {
+                carparkCarsDestroyed++;
+                document.getElementById('objective-text').innerText = 'DESTROY CARS: ' + carparkCarsDestroyed + '/' + CARPARK_CARS_NEEDED;
+                if (carparkCarsDestroyed >= CARPARK_CARS_NEEDED) triggerMissionSuccess();
+              }
+            }
+          }
           if (this === currentVehicle) {
             currentVehicle = null;
             player.pos.copy(this.pos).add(new THREE.Vector3(2, 2, 0));
@@ -2309,6 +2656,11 @@
             }
             updateHUD();
           }
+          // Drop cash pickup
+          if (isPlayerAction) {
+            let cashAmt = (this.type === 'COP' || this.type === 'ARMY') ? 200 : 50;
+            spawnCashPickup(this.pos.x, this.pos.y, this.pos.z, cashAmt);
+          }
           this.spawnDeathParticles(this.pos, hitVel || new THREE.Vector3(0, 10, 0));
         }
       }
@@ -2447,8 +2799,24 @@
       } else {
         for (let v of vehicles) {
           if (!v.isDead && player.pos.distanceToSquared(v.pos) < 25) {
-            currentVehicle = v; v.parked = false; // Unpark when player enters
-            updateHUD(); player.group.visible = false; break;
+            currentVehicle = v; v.parked = false;
+            updateHUD(); player.group.visible = false;
+            // Mission 2: steal car detection
+            if (missionIndex === 1 && mission.state === 'STEAL_CAR') {
+              mission.state = 'DRIVE_TO_ALLEY';
+              mission.target.copy(ALLEY_POS);
+              setWantedLevel(2);
+              document.getElementById('objective-text').innerText = 'DRIVE TO THE SAFE ZONE';
+              showPhoneMessage("Boss: Good, you got wheels. Floor it to the alley in the west side. Lose those cops!", 15000);
+            }
+            // Mission 5: steal plane detection
+            if (missionIndex === 4 && mission.state === 'GO_TO_AIRPORT' && v.type === 'PLANE') {
+              mission.state = 'FLY_TO_ISLAND';
+              mission.target.set(ISLAND_X, 1, ISLAND_Z);
+              document.getElementById('objective-text').innerText = 'FLY TO THE ISLAND';
+              showPhoneMessage("Boss: You're in! Fly south-west to the island. That's your new hideout!", 15000);
+            }
+            break;
           }
         }
       }
@@ -2473,7 +2841,13 @@
       let startPos = player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
       let trueAimDir = hitPoint.sub(startPos).normalize();
       startPos.add(trueAimDir.clone().multiplyScalar(0.8));
-      projectiles.push(new Projectile(startPos, trueAimDir, true));
+      let proj = new Projectile(startPos, trueAimDir, true);
+      if (currentWeapon === 'rocket') {
+        proj.isRocket = true;
+        proj.mesh.scale.set(2, 2, 2);
+        proj.mesh.material.color.setHex(0xff4400);
+      }
+      projectiles.push(proj);
     }
 
     function setupInput() {
@@ -2506,14 +2880,18 @@
         if (k === 'a' || k === 'q' || k === 'arrowleft') { keys.left = true; hideTutorial(); }
         if (k === 'd' || k === 'arrowright') { keys.right = true; hideTutorial(); }
         if (k === ' ') { keys.space = true; hideTutorial(); e.preventDefault(); }
-        if (k === 'f') { 
+        if (k === 'f') {
           let distToBank = player.pos.distanceTo(new THREE.Vector3(72, 1, 72));
-          if (mission.state === 'GO_TO_BANK' && distToBank < 8) {
+          let distToStore = player.pos.distanceTo(STORE_POS);
+          if (mission.state === 'GO_TO_BANK' && distToBank < 10) {
             robBank();
+          } else if (distToStore < 10 && (missionIndex >= 2 || playerInventory.has('store_unlocked'))) {
+            openStore();
+            if (missionIndex === 2 && mission.state === 'GO_TO_STORE') mission.state = 'BUY_WEAPON';
           } else {
-            interactVehicle(); 
+            interactVehicle();
           }
-          hideTutorial(); 
+          hideTutorial();
         }
       });
       document.addEventListener('keyup', e => {
@@ -2602,7 +2980,7 @@
 
     function updateWaypointUI() {
       let distEl = document.getElementById('waypoint-dist');
-      if (mission.active && mission.state === 'GO_TO_BANK' && waypointArrow3D) {
+      if (mission.active && mission.state !== 'SUCCESS' && mission.state !== 'DONE' && mission.state !== 'ESCAPING' && waypointArrow3D) {
         waypointArrow3D.visible = true;
         distEl.style.display = 'block';
         let playerPos = currentVehicle ? currentVehicle.pos : player.pos;
@@ -2713,6 +3091,22 @@
 
     function updateGameLogic(dt) {
       if (bankMarkerGroup) bankMarkerGroup.rotation.y += 1 * dt;
+      if (storeMarkerGroup && storeMarkerGroup.visible) storeMarkerGroup.rotation.y += 1 * dt;
+      if (alleyMarkerGroup && alleyMarkerGroup.visible) alleyMarkerGroup.rotation.y += 1 * dt;
+      if (carparkMarkerGroup && carparkMarkerGroup.visible) carparkMarkerGroup.rotation.y += 1 * dt;
+      // Rotate bank cash wad
+      if (bankCashWad && bankCashWad.visible) {
+        if (bankCashWad.userData.animating) {
+          bankCashWad.userData.animTime += dt;
+          let t = Math.min(1, bankCashWad.userData.animTime / 1.0);
+          let target = (currentVehicle ? currentVehicle.pos : player.pos).clone().add(new THREE.Vector3(0, 1.5, 0));
+          bankCashWad.position.lerpVectors(bankCashWad.userData.startPos, target, t);
+          bankCashWad.scale.setScalar(1 - t * 0.8);
+          if (t >= 1) { bankCashWad.visible = false; bankCashWad.userData.animating = false; }
+        } else { bankCashWad.rotation.y += 2 * dt; bankCashWad.position.y = 6 + Math.sin(Date.now() * 0.002) * 0.3; }
+      }
+      // Update cash pickups
+      updatePickups(dt);
 
       // Handle Upgrade/Success Sequence Camera Animation
       if (mission.state === 'SUCCESS') {
@@ -2774,13 +3168,28 @@
           if (wantedLevel === 0) {
             showPhoneMessage("Boss: Heat's dying down. Good work staying out of sight.", 6000);
             copsKilled = 0; chaos = 0; // Reset
-            if (mission.state === 'ESCAPING') {
-               triggerMissionSuccess();
+            if (mission.state === 'ESCAPING') triggerMissionSuccess();
+            if (mission.state === 'DRIVE_TO_ALLEY') {
+              // Mission 2 complete - arrived at alley and lost cops
+              triggerMissionSuccess();
             }
           } else {
             showPhoneMessage("Losing the heat... keep it up!", 3000);
           }
         }
+      }
+
+      // Mission proximity checks
+      let pPos = currentVehicle ? currentVehicle.pos : player.pos;
+      if (mission.active && mission.state === 'DRIVE_TO_ALLEY' && pPos.distanceToSquared(ALLEY_POS) < 225) {
+        // Near alley - set wanted to 0 instantly (safe zone)
+        wantedLevel = 0; wantedTimer = 20; chaos = 0; copsKilled = 0; updateHUD();
+        document.querySelectorAll('#wanted-level span').forEach(s => { s.style.opacity = '1'; s.style.animation = ''; });
+        triggerMissionSuccess();
+      }
+      if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
+        let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
+        if (islandDist < 6400) triggerMissionSuccess();
       }
 
       if (currentVehicle) {
