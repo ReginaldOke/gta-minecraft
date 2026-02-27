@@ -984,9 +984,9 @@
           { icon: '❤️', text: 'Max Health Doubled!', action: 'health_double' },
           { icon: '🤵', text: 'Suit & Balaclava Unlocked!', action: 'suit_unlock' }
         ]},
-      { id: 1, name: 'GETAWAY', objective: 'MISSION 2: STEAL A CAR & ESCAPE',
+      { id: 1, name: 'GETAWAY', objective: 'MISSION 2: FIND A CAR & LOSE THE COPS',
         target: [-60, 1, -80], reward: 5000,
-        phoneStart: "Boss: Nice work at the bank! Now jack a car and get to the safe house in the alley. Lose those cops!",
+        phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house in the alley. Lose those cops!",
         rewards: [
           { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
           { icon: '🏎️', text: 'Driving Skills Improved!', action: 'drive_skill' }
@@ -1019,6 +1019,52 @@
     let carparkCarsDestroyed = 0;
     const CARPARK_CARS_NEEDED = 10;
 
+    // --- Soundtrack System ---
+    const SOUNDTRACK = [
+      'Songs/Force of Nature.mp3',
+      'Songs/Bread Club - Predictable.mp3',
+      'Songs/BREAD CLUB-CRIMINAL MIND (Music Video).mp3',
+      'Songs/Come My Way.mp3',
+      'Songs/Tokyo.mp3',
+      'Songs/Forever - Bread Club & Phil Fresh.mp3',
+      'Songs/hOT mESS - Bread Club (Official Music Video).mp3',
+      'Songs/Lonely Without You.mp3',
+      'Songs/Rest Of My Life (Official Music Video).mp3',
+      'Songs/2099.mp3',
+      'Songs/Pushing Away [qdHJ5hk81lA].mp3',
+      'Songs/Technical Difficulties [c3KCdQq5ooE].mp3'
+    ];
+    const RADIO_TUNING = 'Songs/Radio tuning.mp3';
+    let radioAudio = null;
+    let radioTrackIndex = 0;
+    let radioStarted = false;
+
+    function startRadio() {
+      if (radioStarted) return;
+      radioStarted = true;
+      radioAudio = new Audio();
+      radioAudio.volume = 0.3;
+      playRadioTuning();
+    }
+
+    function playRadioTuning() {
+      if (!radioAudio) return;
+      radioAudio.src = RADIO_TUNING;
+      radioAudio.onended = () => playSong(radioTrackIndex);
+      radioAudio.play().catch(() => {});
+    }
+
+    function playSong(index) {
+      if (!radioAudio) return;
+      radioTrackIndex = index % SOUNDTRACK.length;
+      radioAudio.src = SOUNDTRACK[radioTrackIndex];
+      radioAudio.onended = () => {
+        radioTrackIndex = (radioTrackIndex + 1) % SOUNDTRACK.length;
+        playRadioTuning(); // Play radio tuning between songs
+      };
+      radioAudio.play().catch(() => {});
+    }
+
     function showPhoneMessage(text, duration = 20000) {
       if (!text) return;
       currentPhoneMessage = text;
@@ -1044,9 +1090,11 @@
       if (isPaused) {
         document.exitPointerLock();
         document.getElementById('pause-screen').style.display = 'flex';
+        if (radioAudio) radioAudio.pause();
       } else {
         document.getElementById('pause-screen').style.display = 'none';
         renderer.domElement.requestPointerLock();
+        if (radioAudio && radioStarted) radioAudio.play().catch(() => {});
       }
     };
 
@@ -1078,6 +1126,8 @@
       if (bankCashWad) { bankCashWad.visible = (index === 0); bankCashWad.userData.animating = false; bankCashWad.scale.setScalar(1); }
       // Show phone message for missions after the first (first is handled via pendingPhoneMessage)
       if (index > 0) setTimeout(() => showPhoneMessage(m.phoneStart, 20000), 500);
+      // Mission 2: set wanted level - cops are chasing from the bank robbery
+      if (index === 1) { setWantedLevel(3); }
       // Reset carpark counter for mission 4
       if (index === 3) { carparkCarsDestroyed = 0; carparkCarsSpawned = false; }
       return m;
@@ -1290,24 +1340,22 @@
       pendingPhoneMessage = MISSIONS[0].phoneStart;
       let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
       if (isMobile) { let msg = pendingPhoneMessage; setTimeout(() => showPhoneMessage(msg, 20000), 500); }
+      startRadio(); // Start the soundtrack
       renderer.domElement.requestPointerLock(); // Must be AFTER setting pendingPhoneMessage
     }
     let pendingPhoneMessage = null;
 
     function robBank() {
       if (mission.state !== 'GO_TO_BANK') return;
-      mission.state = 'ESCAPING';
-      setWantedLevel(Math.max(wantedLevel, 3));
       bankMarkerGroup.visible = false;
-      document.getElementById('objective-text').innerText = "ESCAPE THE COPS AND LAY LOW";
-      showPhoneMessage("Boss: You got the cash! The alarm is tripped! Get out of there, outrun the cops, and lay low until your heat drops!", 20000);
       // Animate cash wad to player
       if (bankCashWad) {
         bankCashWad.userData.animating = true;
         bankCashWad.userData.startPos = bankCashWad.position.clone();
         bankCashWad.userData.animTime = 0;
       }
-      updateHUD();
+      // Show success immediately after robbery
+      triggerMissionSuccess();
     }
 
     function hideTutorial() {
@@ -1766,20 +1814,30 @@
 
       // 3D Waypoint Arrow (follows camera, points toward mission target in 3D)
       waypointArrow3D = new THREE.Group();
-      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.9 });
-      const arrowOutlineMat = new THREE.MeshBasicMaterial({ color: 0x996600, depthTest: false, transparent: true, opacity: 0.9 });
-      // Arrow shaft along +Y axis
-      let arrowBody = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), arrowMat);
-      arrowBody.position.y = 0.05;
-      // Arrow head (cone) at tip, pointing +Y
-      let arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 6), arrowMat);
-      arrowHead.position.y = 0.45;
-      // Outline ring at base for visibility
-      let arrowRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 6, 8), arrowOutlineMat);
-      arrowRing.position.y = -0.2;
-      arrowRing.rotation.x = Math.PI / 2;
-      waypointArrow3D.add(arrowBody); waypointArrow3D.add(arrowHead); waypointArrow3D.add(arrowRing);
-      waypointArrow3D.traverse(c => { if (c.isMesh) c.renderOrder = 999; });
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.92 });
+      // Simple rounded triangle pointing +Y (like a navigation arrow)
+      let triShape = new THREE.Shape();
+      triShape.moveTo(0, 0.35);    // tip
+      triShape.lineTo(-0.15, -0.15);
+      triShape.quadraticCurveTo(-0.12, -0.08, 0, -0.05); // rounded base left
+      triShape.quadraticCurveTo(0.12, -0.08, 0.15, -0.15); // rounded base right
+      triShape.lineTo(0, 0.35);    // back to tip
+      let triGeo = new THREE.ExtrudeGeometry(triShape, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.02, bevelSegments: 3 });
+      triGeo.center();
+      let arrowTri = new THREE.Mesh(triGeo, arrowMat);
+      waypointArrow3D.add(arrowTri);
+      // Distance label sprite
+      let distCanvas = document.createElement('canvas');
+      distCanvas.width = 128; distCanvas.height = 64;
+      let distTex = new THREE.CanvasTexture(distCanvas);
+      let distSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: distTex, depthTest: false, transparent: true }));
+      distSprite.scale.set(0.5, 0.25, 1);
+      distSprite.position.set(0, -0.3, 0);
+      waypointArrow3D.add(distSprite);
+      waypointArrow3D.userData.distCanvas = distCanvas;
+      waypointArrow3D.userData.distTex = distTex;
+      waypointArrow3D.userData.distSprite = distSprite;
+      waypointArrow3D.traverse(c => { if (c.isMesh || c.isSprite) c.renderOrder = 999; });
       waypointArrow3D.renderOrder = 999;
       waypointArrow3D.visible = false;
       scene.add(waypointArrow3D);
@@ -2030,8 +2088,7 @@
               // More green spaces - lower thresholds mean more parks/gardens
               let isPark = (zone === 'RURAL') || (zone === 'SUBURBAN' && noise > 0.35) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45);
               if (isSidewalk && !isPark) {
-                this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                this.setBlock(lx, 1, lz, TYPES.SIDEWALK);
+                this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? TYPES.GRASS : TYPES.CONCRETE);
                 // Alley safe zone: green ground markers
@@ -3104,12 +3161,27 @@
 
     function updateWaypointUI() {
       let distEl = document.getElementById('waypoint-dist');
-      if (mission.active && mission.state !== 'SUCCESS' && mission.state !== 'DONE' && mission.state !== 'ESCAPING' && waypointArrow3D) {
+      // Only show arrow when mission is active and phone has appeared (tutorial dismissed)
+      let phoneShown = !pendingPhoneMessage && document.getElementById('tutorial-overlay').style.display === 'none';
+      if (mission.active && mission.state !== 'SUCCESS' && mission.state !== 'DONE' && waypointArrow3D && phoneShown) {
         waypointArrow3D.visible = true;
         distEl.style.display = 'block';
         let playerPos = currentVehicle ? currentVehicle.pos : player.pos;
         let dist = Math.floor(mission.target.distanceTo(playerPos));
         distEl.innerText = dist + "m";
+
+        // Update distance label on arrow sprite
+        let dc = waypointArrow3D.userData.distCanvas;
+        if (dc) {
+          let ctx = dc.getContext('2d');
+          ctx.clearRect(0, 0, 128, 64);
+          ctx.fillStyle = 'rgba(0,0,0,0.7)';
+          ctx.fillRect(4, 4, 120, 56);
+          ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 36px sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(dist + 'm', 64, 34);
+          waypointArrow3D.userData.distTex.needsUpdate = true;
+        }
 
         // Position arrow in front of camera, slightly above center (HUD-like)
         let camDir = new THREE.Vector3();
@@ -3125,10 +3197,8 @@
         waypointArrow3D.position.copy(arrowPos);
         waypointArrow3D.scale.setScalar(0.5);
 
-        // Calculate direction from arrow to target, then rotate arrow to point that way
-        // Arrow model points along +Y by default, so we need to align +Y with direction to target
+        // Arrow model points along +Y; rotate to point toward target
         let dirToTarget = mission.target.clone().sub(arrowPos).normalize();
-        // Build a quaternion that rotates +Y to dirToTarget
         let up = new THREE.Vector3(0, 1, 0);
         let quat = new THREE.Quaternion();
         quat.setFromUnitVectors(up, dirToTarget);
@@ -3292,7 +3362,6 @@
           if (wantedLevel === 0) {
             showPhoneMessage("Boss: Heat's dying down. Good work staying out of sight.", 6000);
             copsKilled = 0; chaos = 0; // Reset
-            if (mission.state === 'ESCAPING') triggerMissionSuccess();
             if (mission.state === 'DRIVE_TO_ALLEY') {
               // Mission 2 complete - arrived at alley and lost cops
               triggerMissionSuccess();
