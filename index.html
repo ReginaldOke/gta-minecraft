@@ -194,32 +194,20 @@
     }
 
     #waypoint-arrow {
-      position: absolute;
-      top: 15%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-bottom: 35px solid #ffcc00;
-      transform-origin: 50% 150%;
       display: none;
-      pointer-events: none;
-      z-index: 10;
-      filter: drop-shadow(0px 4px 0px #000);
-      transition: transform 0.1s;
     }
 
     #waypoint-dist {
       position: absolute;
-      top: 45px;
-      left: -30px;
-      width: 60px;
-      text-align: center;
-      color: white;
+      top: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ffcc00;
       font-weight: bold;
-      text-shadow: 2px 2px 0 #000;
-      font-size: 16px;
+      font-size: 20px;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000;
+      z-index: 10;
+      pointer-events: none;
     }
 
     #crosshair {
@@ -505,6 +493,15 @@
       color: white;
       border: 2px solid #fff;
       font-weight: bold;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Hide tutorial controls overlay on mobile - too cluttered */
+    @media (max-width: 768px), (pointer: coarse) {
+      #tutorial-overlay { display: none !important; }
     }
 
     #pause-screen {
@@ -620,8 +617,8 @@
 
     <div id="tutorial-overlay">
       <div class="t-row"><span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span><span class="tutorial-text" style="margin-left:15px;">Move / Drive / Fly</span></div>
-      <div class="t-row"><span class="tutorial-text">Mouse Look & Shoot</span></div>
-      <div class="t-row"><span class="kbd" style="padding: 6px 30px;">SPACE</span><span class="tutorial-text">Jump / NOS / Swim / Climb (Plane)</span></div>
+      <div class="t-row"><span class="tutorial-text">Click: Shoot (on foot) / NOS Boost (in vehicle)</span></div>
+      <div class="t-row"><span class="kbd" style="padding: 6px 30px;">SPACE</span><span class="tutorial-text">Jump (on foot & in vehicle) / Climb (Plane)</span></div>
       <div class="t-row"><span class="kbd">F</span><span class="tutorial-text">Enter Vehicles & Planes / Rob Bank</span></div>
     </div>
   </div>
@@ -632,9 +629,9 @@
       <div id="joystick-knob"></div>
     </div>
     <div class="action-btns">
-      <button id="btn-interact" class="m-btn">F</button>
-      <button id="btn-jump" class="m-btn">SPACE</button>
-      <button id="btn-shoot" class="m-btn">FIRE</button>
+      <button id="btn-interact" class="m-btn">Action</button>
+      <button id="btn-jump" class="m-btn">Jump</button>
+      <button id="btn-shoot" class="m-btn">Shoot</button>
     </div>
   </div>
 
@@ -922,7 +919,7 @@
     let activeChunks = new Map();
     let mission = { active: false, state: 'INTRO', target: new THREE.Vector3(72, 1, 72), robber: null };
     let isMouseDown = false; 
-    let bankMarkerGroup;
+    let bankMarkerGroup, waypointArrow3D;
     let currentPhoneMessage = "";
 
     function showPhoneMessage(text, duration = 20000) {
@@ -1033,9 +1030,15 @@
       document.getElementById('tutorial-overlay').style.display = 'flex';
       isPlaying = true;
       renderer.domElement.requestPointerLock();
-      mission.active = true; mission.state = 'GO_TO_BANK'; 
-      showPhoneMessage("Boss: Alright kid, your first job is to hit the National Bank. Follow the glowing pillar. Go inside, walk up to the teller desk, and press F to empty the vault. Be ready for the cops.", 20000);
+      mission.active = true; mission.state = 'GO_TO_BANK';
+      // On desktop: delay phone message until after tutorial is dismissed (avoid overlap)
+      // On mobile: show immediately since tutorial is hidden via CSS
+      let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
+      let phoneDelay = isMobile ? 500 : 0;
+      pendingPhoneMessage = "Boss: Alright kid, your first job is to hit the National Bank. Follow the glowing pillar. Go inside, walk up to the teller desk, and press F to empty the vault. Be ready for the cops.";
+      if (isMobile) setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), phoneDelay);
     }
+    let pendingPhoneMessage = null;
 
     function robBank() {
       if (mission.state !== 'GO_TO_BANK') return;
@@ -1048,7 +1051,17 @@
       updateHUD();
     }
 
-    function hideTutorial() { document.getElementById('tutorial-overlay').style.display = 'none'; }
+    function hideTutorial() {
+      let tut = document.getElementById('tutorial-overlay');
+      if (tut.style.display !== 'none') {
+        tut.style.display = 'none';
+        // Show pending phone message now that tutorial is gone
+        if (pendingPhoneMessage) {
+          setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), 300);
+          pendingPhoneMessage = null;
+        }
+      }
+    }
 
     // --- Models ---
     class RiggedCharacter {
@@ -1410,6 +1423,26 @@
 
       scene.add(bankMarkerGroup);
 
+      // 3D Waypoint Arrow (follows camera, points toward mission target in 3D)
+      waypointArrow3D = new THREE.Group();
+      const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, depthTest: false, transparent: true, opacity: 0.9 });
+      const arrowOutlineMat = new THREE.MeshBasicMaterial({ color: 0x996600, depthTest: false, transparent: true, opacity: 0.9 });
+      // Arrow shaft along +Y axis
+      let arrowBody = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), arrowMat);
+      arrowBody.position.y = 0.05;
+      // Arrow head (cone) at tip, pointing +Y
+      let arrowHead = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 6), arrowMat);
+      arrowHead.position.y = 0.45;
+      // Outline ring at base for visibility
+      let arrowRing = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 6, 8), arrowOutlineMat);
+      arrowRing.position.y = -0.2;
+      arrowRing.rotation.x = Math.PI / 2;
+      waypointArrow3D.add(arrowBody); waypointArrow3D.add(arrowHead); waypointArrow3D.add(arrowRing);
+      waypointArrow3D.traverse(c => { if (c.isMesh) c.renderOrder = 999; });
+      waypointArrow3D.renderOrder = 999;
+      waypointArrow3D.visible = false;
+      scene.add(waypointArrow3D);
+
       player = new PlayerModel();
 
       // Setup Post-Processing Composer
@@ -1565,10 +1598,14 @@
             } else if (zone === 'AIRPORT') {
               isWater = false;
             } else {
-              // River through city (sinusoidal path)
+              // River through city (sinusoidal path, north-south)
               let riverCenter = Math.sin(wz * 0.006) * 90 + 120;
               let riverDist = Math.abs(wx - riverCenter);
               if (riverDist < 12) isWater = true;
+              // Second river (east-west)
+              let river2Center = Math.sin(wx * 0.005) * 80 - 100;
+              let river2Dist = Math.abs(wz - river2Center);
+              if (river2Dist < 10) isWater = true;
               // Zone-based water threshold
               let waterThreshold = zone === 'DOWNTOWN' ? 0.07 : (zone === 'URBAN' ? 0.14 : (zone === 'SUBURBAN' ? 0.20 : 0.30));
               if (noise < waterThreshold) isWater = true;
@@ -1623,16 +1660,18 @@
               }
             } else if (isRoad) {
               this.setBlock(lx, 0, lz, TYPES.ROAD);
-              // Traffic lights at intersections
-              if (isIntersection && rxMod === 1 && rzMod === 1 && zone !== 'RURAL' && zone !== 'OCEAN') {
-                for (let ty = 1; ty <= 6; ty++) this.setBlock(lx, ty, lz, TYPES.STEEL);
-                this.setBlock(lx, 7, lz, TYPES.STEEL);
-                if (lx + 1 < CHUNK_SIZE) { this.setBlock(lx + 1, 7, lz, TYPES.RED); }
-                if (lx + 1 < CHUNK_SIZE && lz + 1 < CHUNK_SIZE) { this.setBlock(lx + 1, 6, lz, TYPES.LIGHT); }
+              // Traffic lights at intersection corners only (small, slim poles)
+              if (isIntersection && zone !== 'RURAL' && zone !== 'OCEAN' && zone !== 'SUBURBAN') {
+                let isCorner = (rxMod === 0 || rxMod === ROAD_WIDTH - 1) && (rzMod === 0 || rzMod === ROAD_WIDTH - 1);
+                if (isCorner) {
+                  for (let ty = 1; ty <= 4; ty++) this.setBlock(lx, ty, lz, TYPES.STEEL);
+                  this.setBlock(lx, 5, lz, TYPES.RED);
+                }
               }
             } else {
               // Standard terrain
-              let isPark = (zone === 'RURAL') || (zone === 'SUBURBAN' && noise > 0.5) || (zone === 'URBAN' && noise > 0.65) || (zone === 'DOWNTOWN' && noise > 0.75) || (zone === 'ISLAND' && noise > 0.55);
+              // More green spaces - lower thresholds mean more parks/gardens
+              let isPark = (zone === 'RURAL') || (zone === 'SUBURBAN' && noise > 0.35) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45);
               if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                 this.setBlock(lx, 1, lz, TYPES.SIDEWALK);
@@ -1761,20 +1800,25 @@
                   }
                 }
               } else if (isPark || zone === 'RURAL' || zone === 'ISLAND') {
-                // Nature generation - terrain hills
-                let hillScale = zone === 'RURAL' ? 5 : (zone === 'ISLAND' ? 4 : 3);
-                let hill = Math.floor(smoothNoise(wx * 0.08, wz * 0.08) * hillScale);
-                for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, TYPES.GRASS);
+                // Nature generation - larger terrain hills
+                let hillScale = zone === 'RURAL' ? 7 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 4 : 3));
+                let hill = Math.floor(smoothNoise(wx * 0.06, wz * 0.06) * hillScale);
+                // Extra hills using secondary noise for more terrain variation
+                let hill2 = Math.floor(smoothNoise(wx * 0.12 + 50, wz * 0.12 + 50) * (hillScale * 0.5));
+                hill = Math.max(hill, hill2);
+                for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, hy === hill ? TYPES.GRASS : TYPES.DIRT);
 
-                // Trees with zone-dependent density
-                let treeChance = zone === 'RURAL' ? 0.92 : (zone === 'ISLAND' ? 0.93 : 0.96);
+                // Trees - more dense with larger canopies
+                let treeChance = zone === 'RURAL' ? 0.90 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.93 : 0.95));
                 if (hash2D(wx, wz) > treeChance) {
-                  let treeH = 4 + Math.floor(hash2D(wx + 5, wz + 5) * 4);
+                  let treeH = 4 + Math.floor(hash2D(wx + 5, wz + 5) * 5);
                   for (let y = hill + 1; y <= hill + treeH; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
+                  let canopyR = treeH > 6 ? 3 : 2;
                   for (let y = hill + treeH - 2; y <= hill + treeH + 2; y++) {
-                    for (let ox = -2; ox <= 2; ox++) {
-                      for (let oz = -2; oz <= 2; oz++) {
-                        if (Math.abs(ox) + Math.abs(oz) < 4 && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
+                    let r = (y === hill + treeH + 2) ? 1 : canopyR;
+                    for (let ox = -r; ox <= r; ox++) {
+                      for (let oz = -r; oz <= r; oz++) {
+                        if (Math.abs(ox) + Math.abs(oz) < r + canopyR && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
                           let leafWX = wx + ox, leafWZ = wz + oz;
                           let isLeafInRoad = (Math.abs(leafWX) % CHUNK_SIZE < ROAD_WIDTH) || (Math.abs(leafWZ) % CHUNK_SIZE < ROAD_WIDTH);
                           if (!isLeafInRoad) this.setBlock(lx + ox, y, lz + oz, TYPES.LEAVES);
@@ -2492,8 +2536,8 @@
         if (isPaused) return;
         if (e.button === 0) {
           isMouseDown = true;
-          // Only fire if we actually have pointer lock
-          if (document.pointerLockElement === renderer.domElement) fireWeapon();
+          // Click = shoot when on foot, NOS/boost when in vehicle
+          if (document.pointerLockElement === renderer.domElement && !currentVehicle) fireWeapon();
         }
       });
       document.addEventListener('mouseup', e => {
@@ -2548,21 +2592,49 @@
       document.getElementById('btn-interact').addEventListener('touchstart', (e) => { e.preventDefault(); hideTutorial(); interactVehicle(); });
       document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); hideTutorial(); keys.space = true; });
       document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys.space = false; });
-      document.getElementById('btn-shoot').addEventListener('touchstart', (e) => { e.preventDefault(); fireWeapon(); });
+      document.getElementById('btn-shoot').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (currentVehicle) { isMouseDown = true; } // NOS boost when in vehicle
+        else { fireWeapon(); } // Shoot when on foot
+      });
+      document.getElementById('btn-shoot').addEventListener('touchend', (e) => { e.preventDefault(); isMouseDown = false; });
     }
 
     function updateWaypointUI() {
-      let arrow = document.getElementById('waypoint-arrow');
-      if (mission.active && mission.state === 'GO_TO_BANK') {
-        arrow.style.display = 'block';
-        let px = currentVehicle ? currentVehicle.pos.x : player.pos.x, pz = currentVehicle ? currentVehicle.pos.z : player.pos.z;
-        let dirToTarget = mission.target.clone().sub(new THREE.Vector3(px, 0, pz)).normalize();
-        let camForward = new THREE.Vector3(0, 0, -1).applyAxisAngle(_upVec, currentVehicle ? currentVehicle.yaw : player.yaw);
-        let angle = Math.atan2(camForward.cross(dirToTarget).y, camForward.dot(dirToTarget));
-        arrow.style.transform = "translate(-50%, -50%) rotate(" + (-angle) + "rad)";
-        let dist = Math.floor(mission.target.distanceTo(new THREE.Vector3(px, 0, pz)));
-        document.getElementById('waypoint-dist').innerText = dist + "m";
-      } else arrow.style.display = 'none';
+      let distEl = document.getElementById('waypoint-dist');
+      if (mission.active && mission.state === 'GO_TO_BANK' && waypointArrow3D) {
+        waypointArrow3D.visible = true;
+        distEl.style.display = 'block';
+        let playerPos = currentVehicle ? currentVehicle.pos : player.pos;
+        let dist = Math.floor(mission.target.distanceTo(playerPos));
+        distEl.innerText = dist + "m";
+
+        // Position arrow in front of camera, slightly above center (HUD-like)
+        let camDir = new THREE.Vector3();
+        camera.getWorldDirection(camDir);
+        let camRight = new THREE.Vector3();
+        camRight.crossVectors(camDir, new THREE.Vector3(0, 1, 0)).normalize();
+        let camUp = new THREE.Vector3();
+        camUp.crossVectors(camRight, camDir).normalize();
+
+        let arrowPos = camera.position.clone()
+          .add(camDir.clone().multiplyScalar(2.5))
+          .add(camUp.clone().multiplyScalar(0.7));
+        waypointArrow3D.position.copy(arrowPos);
+        waypointArrow3D.scale.setScalar(0.5);
+
+        // Calculate direction from arrow to target, then rotate arrow to point that way
+        // Arrow model points along +Y by default, so we need to align +Y with direction to target
+        let dirToTarget = mission.target.clone().sub(arrowPos).normalize();
+        // Build a quaternion that rotates +Y to dirToTarget
+        let up = new THREE.Vector3(0, 1, 0);
+        let quat = new THREE.Quaternion();
+        quat.setFromUnitVectors(up, dirToTarget);
+        waypointArrow3D.quaternion.copy(quat);
+      } else {
+        if (waypointArrow3D) waypointArrow3D.visible = false;
+        distEl.style.display = 'none';
+      }
     }
 
     function drawMinimap() {
@@ -2713,8 +2785,17 @@
 
       if (currentVehicle) {
         document.getElementById('action-msg').style.display = 'none';
-        currentVehicle.updatePhysics(dt, -moveZ, moveX, keys.space);
-        if (keys.space) updateHUD();
+        // Click/hold = NOS boost when driving; Space = car jump
+        currentVehicle.updatePhysics(dt, -moveZ, moveX, isMouseDown);
+        if (isMouseDown) updateHUD();
+        // Space makes the car hop/jump
+        if (keys.space && currentVehicle.type !== 'PLANE' && Math.abs(currentVehicle.vel.y) < 0.5) {
+          currentVehicle.vel.y = 12;
+        }
+        // For planes, space still means climb
+        if (keys.space && currentVehicle.type === 'PLANE') {
+          currentVehicle.vel.y += 25 * dt;
+        }
         let speed = currentVehicle.vel.length();
         let isPlane = currentVehicle.type === 'PLANE';
         let camDist = isPlane ? (20 + speed * 0.15) : (12 + speed * 0.1);
