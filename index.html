@@ -2063,7 +2063,7 @@
         let isPlayerAction = (this === currentVehicle);
         for (let bx = -1; bx <= 1; bx += 2) {
           for (let bz = -1; bz <= 1; bz += 2) {
-            let bType = getBlock(nextX + bx, nextY, nextZ + bz);
+            let bType = getBlock(nextX + bx, nextY + 1, nextZ + bz);
             if (bType !== TYPES.EMPTY && bType !== TYPES.ROAD && bType !== TYPES.WATER) {
               if (speedMag > 15) {
                 let blast = Math.min(4, Math.floor(speedMag / 10));
@@ -2243,7 +2243,7 @@
         if (hitWall && (this.type === 'COP' || this.type === 'ARMY') && Math.abs(this.vel.y) < 0.1) this.vel.y = 6;
         
         let nextY = this.pos.y + this.vel.y * dt;
-        if (nextY - 1 <= floorY) { nextY = floorY + 1; this.vel.y = 0; }
+        if (nextY - 0.5 <= floorY) { nextY = floorY + 0.5; this.vel.y = 0; }
         this.pos.set(this.pos.x + stepX, nextY, this.pos.z + stepZ);
         this.animate(dt, (Math.abs(stepX) > 0 || Math.abs(stepZ) > 0) ? 5 : 0);
         this.group.position.copy(this.pos); this.group.rotation.y = this.yaw;
@@ -2773,7 +2773,7 @@
         if (keys.space && player.pos.y - 1 <= floorY + 0.1 && !inWater) player.vel.y = 15;
         
         let nextY = player.pos.y + player.vel.y * dt;
-        if (nextY - 1 <= floorY) { nextY = floorY + 1; player.vel.y = 0; }
+        if (nextY - 0.5 <= floorY) { nextY = floorY + 0.5; player.vel.y = 0; }
         player.pos.set(player.pos.x + stepX, nextY, player.pos.z + stepZ);
         player.updatePlayerAnim(dt, moveX !== 0 || moveZ !== 0);
         
