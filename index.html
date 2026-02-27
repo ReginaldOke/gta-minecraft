@@ -1523,8 +1523,11 @@
       constructor(type, color) {
         this.group = new THREE.Group(); this.blocks = [];
         let w = 9, h = 7, d = 20, blockSize = 0.22;
-        let carMat = new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.8 });
-        if (type === 'COP_CAR' || type === 'ARMY_CAR') { carMat.roughness = 0.5; carMat.metalness = 0.3; }
+        let isCopType = (type === 'COP_CAR' || type === 'ARMY_CAR');
+        let carMat = new THREE.MeshStandardMaterial({
+          roughness: isCopType ? 0.9 : 0.2,
+          metalness: isCopType ? 0.0 : 0.8
+        });
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(blockSize, blockSize, blockSize),
           carMat, w * h * d);
         this.mesh.castShadow = true;
@@ -1550,16 +1553,21 @@
 
               if ((type === 'COP_CAR' || type === 'ARMY_CAR') && isValid) {
                 if (isChassis || isRoof || isCabin) {
-                  let isWhite = (z > 3 && z < d - 3);
-                  let isStripe = (z === 3 || z === d - 3);
-                  if (bColor !== 0x222222 && bColor !== 0xffffaa && bColor !== 0xff0000) {
-                    if (type === 'ARMY_CAR') bColor = 0x3b4d2e;
-                    else if (isStripe) bColor = 0x888888;
-                    else bColor = isWhite ? 0xeeeeee : 0x222233;
+                  if (type === 'ARMY_CAR') {
+                    if (bColor !== 0x222222 && bColor !== 0xffffaa && bColor !== 0xff0000) bColor = 0x3b4d2e;
+                  } else {
+                    // Classic black & white cop car: white doors/body, black hood/trunk
+                    let isWhiteDoor = (z > 4 && z < d - 4);
+                    if (bColor === 0x222222) {} // Keep window tint
+                    else if (bColor === 0xffffaa || bColor === 0xff0000) {} // Keep lights
+                    else if (isWhiteDoor) bColor = 0xffffff;
+                    else bColor = 0x1a1a2e; // Dark navy for hood/trunk
+                    // Gold badge stripe
+                    if ((z === 4 || z === d - 4) && y >= 1 && y <= 3) bColor = 0xccaa00;
                   }
                 }
-                // Roof lights on y=5 AND y=6 for visibility
-                if ((y === 5 || y === 6) && (z === 8 || z === 9) && x > 2 && x < w - 3) {
+                // Roof light bar: red/blue on y=5 AND y=6
+                if ((y === 5 || y === 6) && z >= 7 && z <= 10 && x > 1 && x < w - 2) {
                   isValid = true; bColor = (x < w / 2) ? 0xff0000 : 0x0000ff;
                 }
               }
@@ -2592,19 +2600,35 @@
                   }
                 }
               }
-              // On-ramps (X direction highways)
-              if ((rampX || rampXdown) && hzMod >= 2 && hzMod < 6) {
+              // On-ramps (X direction highways) - offset to the side, not on the road
+              if ((rampX || rampXdown) && hzMod >= 10 && hzMod < 14 && !isRoad) {
                 let rampProgress = rampX ? (hxMod - 8) / 14.0 : (128 - hxMod) / 14.0;
                 let rampY = Math.max(1, Math.floor(rampProgress * 15));
                 this.setBlock(lx, rampY, lz, TYPES.ROAD);
-                if (hzMod === 2 || hzMod === 5) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
+                if (hzMod === 10 || hzMod === 13) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
               }
-              // On-ramps (Z direction highways)
-              if ((rampZ || rampZdown) && hxMod >= 2 && hxMod < 6) {
+              // Bridge connecting side ramp to highway deck (X direction)
+              if ((rampX || rampXdown) && hzMod >= 6 && hzMod < 10) {
+                let rampProgress = rampX ? (hxMod - 8) / 14.0 : (128 - hxMod) / 14.0;
+                if (rampProgress > 0.75) {
+                  this.setBlock(lx, 15, lz, TYPES.ROAD);
+                  if (hzMod === 6 || hzMod === 9) this.setBlock(lx, 16, lz, TYPES.CONCRETE);
+                }
+              }
+              // On-ramps (Z direction highways) - offset to the side
+              if ((rampZ || rampZdown) && hxMod >= 10 && hxMod < 14 && !isRoad) {
                 let rampProgress = rampZ ? (hzMod - 8) / 14.0 : (128 - hzMod) / 14.0;
                 let rampY = Math.max(1, Math.floor(rampProgress * 15));
                 this.setBlock(lx, rampY, lz, TYPES.ROAD);
-                if (hxMod === 2 || hxMod === 5) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
+                if (hxMod === 10 || hxMod === 13) this.setBlock(lx, rampY + 1, lz, TYPES.CONCRETE);
+              }
+              // Bridge connecting side ramp to highway deck (Z direction)
+              if ((rampZ || rampZdown) && hxMod >= 6 && hxMod < 10) {
+                let rampProgress = rampZ ? (hzMod - 8) / 14.0 : (128 - hzMod) / 14.0;
+                if (rampProgress > 0.75) {
+                  this.setBlock(lx, 15, lz, TYPES.ROAD);
+                  if (hxMod === 6 || hxMod === 9) this.setBlock(lx, 16, lz, TYPES.CONCRETE);
+                }
               }
             }
           }
@@ -2745,7 +2769,9 @@
         this.type = type; this.pos = new THREE.Vector3(x, type === 'PLANE' ? 2.0 : 1.5, z);
         this.vel = new THREE.Vector3(); this.yaw = 0; this.planePitch = 0;
         this.health = type === 'ARMY' ? 800 : (type === 'COP' ? 300 : (type === 'PLANE' ? 500 : 100));
+        this.maxHealth = this.health;
         this.isDead = false; this.nos = 100; this.isFlying = false; this.parked = false;
+        this.ramHits = 0; this.burning = false; this.lastRam = 0;
         let targetDir = getLaneDirection(this.pos);
         if (targetDir) this.yaw = Math.atan2(-targetDir.x, -targetDir.z);
 
@@ -2899,6 +2925,29 @@
             camera.position.add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0));
           } else if (speedMag > 2) {
             player.vel.add(this.vel.clone().multiplyScalar(0.5)); player.vel.y = Math.max(player.vel.y, 4);
+          }
+        }
+        // Cop car ramming player's vehicle
+        if (!isPlayerAction && currentVehicle && !currentVehicle.isDead && (this.type === 'COP' || this.type === 'ARMY') && this.pos.distanceToSquared(currentVehicle.pos) < 10) {
+          let now = Date.now();
+          if (speedMag > 3 && now - this.lastRam > 500) {
+            this.lastRam = now;
+            let ramDmg = this.type === 'ARMY' ? 15 : 8;
+            currentVehicle.takeDamage(ramDmg, false);
+            currentVehicle.ramHits++;
+            // Nudge player's car
+            let pushDir = currentVehicle.pos.clone().sub(this.pos).normalize();
+            currentVehicle.vel.add(pushDir.multiplyScalar(speedMag * 0.4));
+            currentVehicle.vel.y = Math.max(currentVehicle.vel.y, 2);
+            // Camera shake
+            camera.position.add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0));
+            // Slow cop after ramming
+            this.vel.multiplyScalar(0.4);
+            // After 10 ram hits, car starts burning
+            if (currentVehicle.ramHits >= 10 && !currentVehicle.burning) {
+              currentVehicle.burning = true;
+              showPhoneMessage("Your car is on fire! Get out NOW!", 5000);
+            }
           }
         }
         this.pos.set(this.pos.x + stepX, nextY, this.pos.z + stepZ);
@@ -3681,6 +3730,13 @@
         // Click/hold = NOS boost when driving; Space = car jump
         currentVehicle.updatePhysics(dt, -moveZ, moveX, isMouseDown);
         if (isMouseDown) updateHUD();
+        // Burning car damages player
+        if (currentVehicle && currentVehicle.burning) {
+          playerHealth -= 40 * dt; updateHUD();
+          if (Math.random() < 0.3) spawnPhysicsParticle(currentVehicle.pos.x + (Math.random() - 0.5) * 2, currentVehicle.pos.y + 0.5, currentVehicle.pos.z + (Math.random() - 0.5) * 2, 'FIRE');
+          if (Math.random() < 0.15) spawnPhysicsParticle(currentVehicle.pos.x, currentVehicle.pos.y + 2, currentVehicle.pos.z, 'SMOKE', null, true);
+          if (playerHealth <= 0) gameOver();
+        }
         // Space makes the car hop/jump
         if (keys.space && currentVehicle.type !== 'PLANE' && Math.abs(currentVehicle.vel.y) < 0.5) {
           currentVehicle.vel.y = 12;
