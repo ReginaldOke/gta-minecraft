@@ -974,7 +974,7 @@
 
     // --- Multi-Mission System ---
     const STORE_POS = new THREE.Vector3(-73, 1, 13);
-    const ALLEY_POS = new THREE.Vector3(-60, 1, -80);
+    const ALLEY_POS = new THREE.Vector3(-504, 1, 24);
     const CARPARK_POS = new THREE.Vector3(192, 1, -48);
     const MISSIONS = [
       { id: 0, name: 'ROB THE BANK', objective: 'MISSION 1: ROB THE BANK',
@@ -986,8 +986,8 @@
           { icon: '🤵', text: 'Suit & Balaclava Unlocked!', action: 'suit_unlock' }
         ]},
       { id: 1, name: 'GETAWAY', objective: 'MISSION 2: FIND A CAR & LOSE THE COPS',
-        target: [-60, 1, -80], reward: 5000,
-        phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house in the alley. Lose those cops!",
+        target: [-504, 1, 24], reward: 5000,
+        phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house on Grove Street. Lose those cops!",
         rewards: [
           { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
           { icon: '🏎️', text: 'Driving Skills Improved!', action: 'drive_skill' }
@@ -1523,8 +1523,10 @@
       constructor(type, color) {
         this.group = new THREE.Group(); this.blocks = [];
         let w = 9, h = 7, d = 20, blockSize = 0.22;
+        let carMat = new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.8 });
+        if (type === 'COP_CAR' || type === 'ARMY_CAR') { carMat.roughness = 0.5; carMat.metalness = 0.3; }
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(blockSize, blockSize, blockSize),
-          new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.8 }), w * h * d);
+          carMat, w * h * d);
         this.mesh.castShadow = true;
         let i = 0, m = new THREE.Matrix4(), c = new THREE.Color();
         for (let x = 0; x < w; x++) {
@@ -1548,13 +1550,16 @@
 
               if ((type === 'COP_CAR' || type === 'ARMY_CAR') && isValid) {
                 if (isChassis || isRoof || isCabin) {
-                  let isWhite = (z > 5 && z < d - 4);
-                  if (bColor !== 0x222222 && bColor !== 0xffffaa && bColor !== 0xff0000) { 
+                  let isWhite = (z > 3 && z < d - 3);
+                  let isStripe = (z === 3 || z === d - 3);
+                  if (bColor !== 0x222222 && bColor !== 0xffffaa && bColor !== 0xff0000) {
                     if (type === 'ARMY_CAR') bColor = 0x3b4d2e;
-                    else bColor = isWhite ? 0xeeeeee : 0x111111; 
+                    else if (isStripe) bColor = 0x888888;
+                    else bColor = isWhite ? 0xeeeeee : 0x222233;
                   }
                 }
-                if (y === 6 && (z === 8 || z === 9) && x > 2 && x < w - 3) {
+                // Roof lights on y=5 AND y=6 for visibility
+                if ((y === 5 || y === 6) && (z === 8 || z === 9) && x > 2 && x < w - 3) {
                   isValid = true; bColor = (x < w / 2) ? 0xff0000 : 0x0000ff;
                 }
               }
@@ -1954,8 +1959,9 @@
     }
 
     class Projectile {
-      constructor(pos, dir, isPlayer) {
+      constructor(pos, dir, isPlayer, damage = 0) {
         this.pos = pos.clone(); this.isPlayer = isPlayer;
+        this.damage = damage || (isPlayer ? 0 : 25); // Default cop damage
         let pSpeed = isPlayer ? player.projSpeed : 100;
         let pSize = isPlayer ? player.projSize : 0.2;
         let pColor = isPlayer ? player.projColor : 0xff4400;
@@ -2003,10 +2009,16 @@
                 hit = true; break;
               }
             }
-          } else if (!currentVehicle && this.pos.distanceToSquared(player.pos) < 1.44) {
-            playerHealth -= 15; updateHUD();
-            if (playerHealth <= 0) gameOver();
-            hit = true; break;
+          } else {
+            // Cop bullets damage player on foot or in vehicle
+            let playerTarget = currentVehicle ? currentVehicle.pos : player.pos;
+            let hitRadius = currentVehicle ? 6.25 : 1.44;
+            if (this.pos.distanceToSquared(playerTarget) < hitRadius) {
+              playerHealth -= this.damage; updateHUD();
+              if (currentVehicle) currentVehicle.takeDamage(10, false); // Also damage vehicle
+              if (playerHealth <= 0) gameOver();
+              hit = true; break;
+            }
           }
           if (hit) break;
         }
@@ -2031,7 +2043,7 @@
         const isBank = (this.cx === 1 && this.cz === 1);
         const isStore = (this.cx === -2 && this.cz === 0);
         const isCarpark = (this.cx === 4 && this.cz === -1);
-        const isAlley = (this.cx === -1 && this.cz === -2);
+        const isAlley = (this.cx === -11 && this.cz === 0);
         let h = hash2D(this.cx, this.cz);
 
         // Material palette per chunk
@@ -2060,8 +2072,13 @@
         } else if (zone === 'URBAN') {
           buildingHeight = 12 + Math.floor(h * 20);
         } else if (zone === 'SUBURBAN') {
-          buildingHeight = h > 0.3 ? 3 + Math.floor(h * 4) : 0; // Some lots are empty (parks/yards)
-          wallType = h > 0.6 ? TYPES.BRICK_RED : (h > 0.3 ? TYPES.PLASTER_LIGHT : TYPES.BRICK_BROWN);
+          buildingHeight = h > 0.3 ? 3 + Math.floor(h * 4) : 0;
+          let houseColors = [TYPES.PLASTER_LIGHT, TYPES.PLASTER_WARM, TYPES.BRICK_RED, TYPES.BRICK, TYPES.BRICK_BROWN, TYPES.CONCRETE];
+          wallType = houseColors[Math.floor(h * 100) % houseColors.length];
+        } else if (zone === 'RURAL') {
+          buildingHeight = h > 0.7 ? 4 + Math.floor(h * 3) : 0; // Sparse farmhouses/barns
+          wallType = h > 0.85 ? TYPES.BRICK_RED : TYPES.WOOD;
+          glassType = TYPES.GLASS;
         } else if (zone === 'ISLAND') {
           buildingHeight = 5 + Math.floor(h * 15);
         }
@@ -2188,20 +2205,64 @@
             } else {
               // Standard terrain
               // More green spaces - lower thresholds mean more parks/gardens
-              let isPark = (zone === 'RURAL') || (zone === 'SUBURBAN' && noise > 0.35) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45);
+              let isPark = (zone === 'RURAL' && noise > 0.25) || (zone === 'SUBURBAN' && noise > 0.45) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45);
               if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? TYPES.GRASS : TYPES.CONCRETE);
-                // Alley safe zone: green ground markers
-                if (isAlley && !isRoad && lx >= 16 && lx <= 32 && lz >= 16 && lz <= 32) {
-                  this.setBlock(lx, 0, lz, TYPES.GRASS);
-                  // Walls on sides to form alley corridor
-                  if ((lx === 16 || lx === 32) && lz >= 16 && lz <= 32) {
-                    for (let wy = 1; wy <= 8; wy++) this.setBlock(lx, wy, lz, TYPES.BRICK_BROWN);
-                  }
-                  if ((lz === 16 || lz === 32) && lx > 16 && lx < 32 && !(lx >= 22 && lx <= 26)) {
-                    for (let wy = 1; wy <= 8; wy++) this.setBlock(lx, wy, lz, TYPES.BRICK_BROWN);
+                // === CUL-DE-SAC (GROVE STREET) SAFE HOUSE ===
+                if (isAlley && !isRoad) {
+                  let culCX = 24, culHW = 3, culSZ = ROAD_WIDTH, culEZ = 38;
+                  let isCulRoad = (lx >= culCX - culHW && lx <= culCX + culHW && lz >= culSZ && lz <= culEZ);
+                  let turnDist = Math.sqrt((lx - culCX) * (lx - culCX) + (lz - culEZ) * (lz - culEZ));
+                  let isTurn = (turnDist <= 6 && lz >= culEZ - 2);
+                  if (isCulRoad || isTurn) {
+                    let isEdge = isCulRoad && (lx === culCX - culHW || lx === culCX + culHW);
+                    let isTurnEdge = isTurn && turnDist >= 5;
+                    this.setBlock(lx, 0, lz, (isEdge || isTurnEdge) ? TYPES.SIDEWALK : TYPES.ROAD);
+                  } else {
+                    this.setBlock(lx, 0, lz, TYPES.GRASS);
+                    // Safe house at end of cul-de-sac
+                    let isSH = (lx >= 19 && lx <= 29 && lz >= 40 && lz <= 46);
+                    let isSHW = isSH && (lx === 19 || lx === 29 || lz === 40 || lz === 46);
+                    let isSHD = (lz === 40 && lx >= 23 && lx <= 25);
+                    if (isSH) {
+                      this.setBlock(lx, 0, lz, TYPES.GREEN);
+                      for (let sy = 1; sy <= 5; sy++) {
+                        if (isSHD && sy <= 3) continue;
+                        if (isSHW) this.setBlock(lx, sy, lz, TYPES.PLASTER_WARM);
+                        else if (sy === 1) this.setBlock(lx, sy, lz, TYPES.WOOD);
+                      }
+                      let dfc = Math.abs(lx - 24), rH = 8 - dfc;
+                      if (rH > 5) { for (let ry = 6; ry <= rH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN); }
+                    }
+                    // Neighboring houses
+                    let houses = [
+                      [5, 14, culSZ + 2, culSZ + 10, culSZ + 2, TYPES.PLASTER_LIGHT, 5],
+                      [5, 14, culSZ + 14, culSZ + 22, culSZ + 14, TYPES.BRICK_RED, 4],
+                      [34, 43, culSZ + 2, culSZ + 10, culSZ + 2, TYPES.BRICK, 5],
+                      [34, 43, culSZ + 14, culSZ + 22, culSZ + 14, TYPES.PLASTER_WARM, 4]
+                    ];
+                    for (let hd of houses) {
+                      let [x1,x2,z1,z2,dz,wt,hh] = hd;
+                      if (lx >= x1 && lx <= x2 && lz >= z1 && lz <= z2) {
+                        let isW = (lx === x1 || lx === x2 || lz === z1 || lz === z2);
+                        let mhx = Math.floor((x1 + x2) / 2);
+                        let isDr = (lz === dz && lx >= mhx - 1 && lx <= mhx + 1);
+                        for (let hy = 1; hy <= hh; hy++) {
+                          if (isDr && hy <= 3) continue;
+                          let isWin = (isW && hy === 2 && (lx % 3 === 0 || lz % 3 === 0) && !isDr);
+                          if (isW) this.setBlock(lx, hy, lz, isWin ? TYPES.GLASS : wt);
+                          else if (hy === 1) this.setBlock(lx, hy, lz, TYPES.WOOD);
+                        }
+                        let rC = Math.floor((x1 + x2) / 2), dfcH = Math.abs(lx - rC);
+                        let rHH = hh + 3 - dfcH;
+                        if (rHH > hh) { for (let ry = hh + 1; ry <= rHH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN); }
+                      }
+                    }
+                    // Fences along cul-de-sac road
+                    let nearCul = (lx === culCX - culHW - 2 || lx === culCX + culHW + 2);
+                    if (nearCul && lz >= culSZ && lz <= culEZ && lz % 2 === 0) this.setBlock(lx, 1, lz, TYPES.WOOD);
                   }
                 }
               }
@@ -2371,6 +2432,31 @@
                       }
                     }
                   }
+                  // Suburban peaked roofs + front porches
+                  if (zone === 'SUBURBAN' && !isBank && !isStore && !isCarpark && buildingHeight > 0) {
+                    let roofPeak = buildingHeight + Math.floor(Math.min(bWidth, bDepth) / 3) + 1;
+                    let isLongX = bWidth >= bDepth;
+                    if (isLongX) {
+                      let centerZ = Math.floor(bStartZ + bDepth / 2);
+                      let dfc = Math.abs(lz - centerZ);
+                      let maxD = Math.max(1, Math.floor(bDepth / 2));
+                      let roofH = roofPeak - Math.floor((dfc / maxD) * (roofPeak - buildingHeight));
+                      for (let ry = buildingHeight + 1; ry <= roofH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN);
+                    } else {
+                      let centerX = Math.floor(bStartX + bWidth / 2);
+                      let dfc = Math.abs(lx - centerX);
+                      let maxD = Math.max(1, Math.floor(bWidth / 2));
+                      let roofH = roofPeak - Math.floor((dfc / maxD) * (roofPeak - buildingHeight));
+                      for (let ry = buildingHeight + 1; ry <= roofH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN);
+                    }
+                    // Porch overhang at front door
+                    if (lz >= bStartZ - 2 && lz < bStartZ && lx >= midX - 3 && lx <= midX + 3) {
+                      this.setBlock(lx, buildingHeight, lz, TYPES.WOOD);
+                      if ((lx === midX - 3 || lx === midX + 3) && lz === bStartZ - 2) {
+                        for (let py = 1; py < buildingHeight; py++) this.setBlock(lx, py, lz, TYPES.WOOD);
+                      }
+                    }
+                  }
                 } else {
                   // Street furniture (lamp posts) - on sidewalk, not road
                   if (lx === margin && lz % 16 === 0 && zone !== 'SUBURBAN') {
@@ -2386,7 +2472,7 @@
                       this.setBlock(lx, 1, lz, TYPES.WOOD);
                     }
                     // Yard trees
-                    if (hash2D(wx + 10, wz + 10) > 0.96) {
+                    if (hash2D(wx + 10, wz + 10) > 0.985) {
                       let th = 3 + Math.floor(hash2D(wx + 15, wz + 15) * 2);
                       for (let y = 1; y <= th; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
                       for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) {
@@ -2405,15 +2491,23 @@
                 }
               } else if (isPark || zone === 'RURAL' || zone === 'ISLAND') {
                 // Nature generation - larger terrain hills
-                let hillScale = zone === 'RURAL' ? 7 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 4 : 3));
+                let hillScale = zone === 'RURAL' ? 12 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 5 : 3));
                 let hill = Math.floor(smoothNoise(wx * 0.06, wz * 0.06) * hillScale);
                 // Extra hills using secondary noise for more terrain variation
                 let hill2 = Math.floor(smoothNoise(wx * 0.12 + 50, wz * 0.12 + 50) * (hillScale * 0.5));
                 hill = Math.max(hill, hill2);
                 for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, hy === hill ? TYPES.GRASS : TYPES.DIRT);
 
-                // Trees - more dense with larger canopies
-                let treeChance = zone === 'RURAL' ? 0.90 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.93 : 0.95));
+                // Waterfalls on tall hills
+                if (hill >= 5 && (zone === 'RURAL' || zone === 'SUBURBAN')) {
+                  let adjHill = Math.floor(smoothNoise((wx + 1) * 0.06, wz * 0.06) * hillScale);
+                  if (adjHill < hill - 2 && hash2D(wx * 3, wz * 3) > 0.92) {
+                    for (let wy = adjHill + 1; wy <= hill; wy++) this.setBlock(lx, wy, lz, TYPES.WATER);
+                  }
+                }
+
+                // Trees - sparse in open areas
+                let treeChance = zone === 'RURAL' ? 0.975 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.98 : 0.95));
                 if (hash2D(wx, wz) > treeChance) {
                   let treeH = 4 + Math.floor(hash2D(wx + 5, wz + 5) * 5);
                   for (let y = hill + 1; y <= hill + treeH; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
@@ -2817,12 +2911,12 @@
         if (this.health <= 0 && !this.isDead) {
           this.isDead = true;
           if (isPlayerAction && this !== currentVehicle) { 
-            score += 100; addChaos(50); 
+            score += 100; addChaos(this.type === 'COP' || this.type === 'ARMY' ? 100 : 50);
             if (this.type === 'COP' || this.type === 'ARMY') {
               copsKilled++;
-              if (copsKilled >= 15 && wantedLevel < 5) setWantedLevel(5);
-              else if (copsKilled >= 10 && wantedLevel < 4) setWantedLevel(4);
-              else if (copsKilled >= 5 && wantedLevel < 3) setWantedLevel(3);
+              if (copsKilled >= 12 && wantedLevel < 5) setWantedLevel(5);
+              else if (copsKilled >= 8 && wantedLevel < 4) setWantedLevel(4);
+              else if (copsKilled >= 4 && wantedLevel < 3) setWantedLevel(3);
             }
             updateHUD();
           }
@@ -2889,13 +2983,14 @@
             // Slow fire rate like skeleton arrows
             let fireRate = this.type === 'ARMY' ? 1800 : 2500;
             let fireRange = this.type === 'ARMY' ? 1600 : 900;
+            let bulletDmg = this.type === 'ARMY' ? 50 : 25;
             if (Date.now() - this.lastShot > fireRate && distSq < fireRange) {
               let dir = targetPos.clone().sub(this.pos).normalize();
               // Add inaccuracy - cops don't have perfect aim
               dir.x += (Math.random() - 0.5) * 0.3;
               dir.z += (Math.random() - 0.5) * 0.3;
               dir.normalize();
-              projectiles.push(new Projectile(this.pos.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, false));
+              projectiles.push(new Projectile(this.pos.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, false, bulletDmg));
               this.lastShot = Date.now();
             }
           } else {
@@ -2972,14 +3067,14 @@
           this.isDead = true;
           if (isPlayerAction) { 
             score += (this.type === 'COP' || this.type === 'ARMY' ? 50 : 10); 
-            addChaos(this.type === 'COP' || this.type === 'ARMY' ? 50 : 10); 
-            
+            addChaos(this.type === 'COP' || this.type === 'ARMY' ? 100 : 10);
+
             if (this.type === 'COP' || this.type === 'ARMY') {
               copsKilled++;
               // Gradual escalation - killing lots of cops increases wanted
-              if (copsKilled >= 15 && wantedLevel < 5) setWantedLevel(5);
-              else if (copsKilled >= 10 && wantedLevel < 4) setWantedLevel(4);
-              else if (copsKilled >= 5 && wantedLevel < 3) setWantedLevel(3);
+              if (copsKilled >= 12 && wantedLevel < 5) setWantedLevel(5);
+              else if (copsKilled >= 8 && wantedLevel < 4) setWantedLevel(4);
+              else if (copsKilled >= 4 && wantedLevel < 3) setWantedLevel(3);
             }
             updateHUD();
           }
@@ -3000,8 +3095,10 @@
 
     function spawnTraffic() {
       vehicles = vehicles.filter(v => {
+        if (v === currentVehicle) return true; // Never cull the vehicle the player is driving
+        let referencePos = currentVehicle ? currentVehicle.pos : player.pos;
         let maxDist = v.type === 'PLANE' ? CHUNK_SIZE * CHUNK_SIZE * 25 : CHUNK_SIZE * CHUNK_SIZE * 9;
-        if (v.pos.distanceToSquared(player.pos) > maxDist) { v.dispose(); return false; }
+        if (v.pos.distanceToSquared(referencePos) > maxDist) { v.dispose(); return false; }
         return true;
       });
       peds = peds.filter(p => {
@@ -3066,8 +3163,8 @@
       let angle = Math.random() * Math.PI * 2, dist = currentVehicle ? 80 : 50;
       let cx = player.pos.x + Math.cos(angle) * dist, cz = player.pos.z + Math.sin(angle) * dist;
       // Fewer cops total - max 1 car + 2 foot per star
-      let maxCopCars = wantedLevel;
-      let maxCopPeds = wantedLevel * 2;
+      let maxCopCars = wantedLevel * 2;
+      let maxCopPeds = wantedLevel * 3;
       if (currentVehicle || Math.random() > 0.6) {
         if (vehicles.filter(v => v.type === 'COP' || v.type === 'ARMY').length < maxCopCars) {
           vehicles.push(new Vehicle(type, Math.round(cx / CHUNK_SIZE) * CHUNK_SIZE + 2, cz, type === 'ARMY' ? 0x3b4d2e : 0x111111));
@@ -3155,7 +3252,7 @@
               mission.target.copy(ALLEY_POS);
               setWantedLevel(2);
               document.getElementById('objective-text').innerText = 'DRIVE TO THE SAFE ZONE';
-              showPhoneMessage("Boss: Good, you got wheels. Floor it to the alley in the west side. Lose those cops!", 15000);
+              showPhoneMessage("Boss: Good, you got wheels. Floor it to the safe house on Grove Street out west. Lose those cops!", 15000);
             }
             // Mission 5: steal plane detection
             if (missionIndex === 5 && mission.state === 'GO_TO_AIRPORT' && v.type === 'PLANE') {
@@ -3525,6 +3622,21 @@
           wantedTimer = 20;
           chaos = Math.max(0, chaos - 200); // Also reduce chaos
           updateHUD();
+          // Despawn some cops/army when stars drop
+          let copVehiclesToRemove = 2;
+          vehicles = vehicles.filter(v => {
+            if ((v.type === 'COP' || v.type === 'ARMY') && v !== currentVehicle && copVehiclesToRemove > 0) {
+              copVehiclesToRemove--; v.dispose(); return false;
+            }
+            return true;
+          });
+          let copPedsToRemove = 3;
+          peds = peds.filter(p => {
+            if ((p.type === 'COP' || p.type === 'ARMY') && !p.isDead && copPedsToRemove > 0) {
+              copPedsToRemove--; p.dispose(); return false;
+            }
+            return true;
+          });
           // Reset star opacity
           document.querySelectorAll('#wanted-level span').forEach(s => s.style.opacity = '1');
           if (wantedLevel === 0) {
@@ -3702,7 +3814,8 @@
             }
             // Cop cars shoot very occasionally
             if (distSq < 2500 && Math.random() < 0.008) {
-              projectiles.push(new Projectile(veh.pos.clone().add(new THREE.Vector3(0, 1, 0)), dirToPlayer, false));
+              let carBulletDmg = veh.type === 'ARMY' ? 50 : 25;
+              projectiles.push(new Projectile(veh.pos.clone().add(new THREE.Vector3(0, 1, 0)), dirToPlayer, false, carBulletDmg));
             }
           }
         } else if (!veh.parked) {
