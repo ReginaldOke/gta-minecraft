@@ -640,6 +640,7 @@
         </div>
         <div id="wanted-level" class="stars"><span id="s1">★</span><span id="s2">★</span><span id="s3">★</span><span id="s4">★</span><span id="s5">★</span></div>
         <div id="objective-text">MISSION 1: ROB THE BANK</div>
+        <div id="car-counter" style="display:none; gap:4px; justify-content:center; margin-top:5px;"></div>
       </div>
     </div>
     <div id="crosshair"></div>
@@ -959,20 +960,20 @@
 
     // --- Store / Inventory ---
     const STORE_ITEMS = [
-      { id: 'health_pack', name: 'Health Pack', price: 1000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
-      { id: 'armor', name: 'Body Armor', price: 3000, icon: '🛡️', type: 'consumable', desc: '+2000 max HP' },
+      { id: 'health_pack', name: 'Health Pack', price: 50000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
+      { id: 'armor', name: 'Body Armor', price: 50000, icon: '🛡️', type: 'consumable', desc: '+2000 max HP' },
       { id: 'rocket', name: 'Rocket Launcher', price: 8000, icon: '🚀', type: 'weapon', desc: '5-block blast radius!' },
       { id: 'suit', name: 'Business Suit', price: 1500, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
       { id: 'balaclava', name: 'Balaclava', price: 500, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
       { id: 'tattoo', name: 'Sleeve Tattoos', price: 3000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
-      { id: 'spray', name: 'Spray Can', price: 500, icon: '🎨', type: 'tool', desc: 'Tag the city' }
+      { id: 'spray', name: 'Spray Can', price: 50000, icon: '🎨', type: 'tool', desc: 'Tag the city' }
     ];
     let playerInventory = new Set();
     let currentWeapon = 'pistol';
     let storeOpen = false;
 
     // --- Multi-Mission System ---
-    const STORE_POS = new THREE.Vector3(-96, 1, 0);
+    const STORE_POS = new THREE.Vector3(-73, 1, 13);
     const ALLEY_POS = new THREE.Vector3(-60, 1, -80);
     const CARPARK_POS = new THREE.Vector3(192, 1, -48);
     const MISSIONS = [
@@ -998,14 +999,21 @@
           { icon: '🚀', text: 'Rocket Launcher Equipped!', action: 'rocket_equip' },
           { icon: '🏪', text: 'Store Always Open!', action: 'store_open' }
         ]},
-      { id: 3, name: 'DEMOLITION', objective: 'MISSION 4: DESTROY THE CARPARK',
+      { id: 3, name: 'RAMPAGE', objective: 'MISSION 4: DESTROY 5 CARS',
+        target: [0, 1, 0], reward: 10000,
+        phoneStart: "Boss: Time to cause some chaos! Use that rocket launcher and blow up 5 cars around the city. Any car counts - make it rain fire!",
+        rewards: [
+          { icon: '💰', text: '+$10,000 Destruction Pay', action: 'cash10k' },
+          { icon: '💥', text: 'Car Crusher!', action: 'car_crusher' }
+        ]},
+      { id: 4, name: 'DEMOLITION', objective: 'MISSION 5: DESTROY THE CARPARK',
         target: [192, 1, -48], reward: 15000,
-        phoneStart: "Boss: See that multi-story carpark? Blow every car in there to smithereens with your new rocket launcher!",
+        phoneStart: "Boss: See that multi-story carpark? Level the whole building with your rocket launcher. Blow out at least half the blocks!",
         rewards: [
           { icon: '💰', text: '+$15,000 Destruction Pay', action: 'cash15k' },
-          { icon: '💥', text: 'Explosion Expert!', action: 'explosion_expert' }
+          { icon: '💥', text: 'Demolition Expert!', action: 'explosion_expert' }
         ]},
-      { id: 4, name: 'FINAL HEIST', objective: 'MISSION 5: STEAL A PLANE',
+      { id: 5, name: 'FINAL HEIST', objective: 'MISSION 6: STEAL A PLANE',
         target: [AIRPORT_X, 1, AIRPORT_Z + 9], reward: 25000,
         phoneStart: "Boss: Final job. Get to the airport and steal a plane. Fly it to the island - that's your new hideout. Make me proud, kid.",
         rewards: [
@@ -1016,15 +1024,17 @@
     ];
     let missionIndex = 0;
     let mission = { active: false, state: 'INTRO', target: new THREE.Vector3(72, 1, 72) };
-    let carparkCarsDestroyed = 0;
-    const CARPARK_CARS_NEEDED = 10;
+    let carsDestroyedCount = 0;
+    const CARS_NEEDED = 5;
+    let carparkBlocksDestroyed = 0;
+    let carparkTotalBlocks = 0;
 
     // --- Soundtrack System ---
     const SOUNDTRACK = [
-      'Songs/Force of Nature.mp3',
-      'Songs/Bread Club - Predictable.mp3',
       'Songs/BREAD CLUB-CRIMINAL MIND (Music Video).mp3',
       'Songs/Come My Way.mp3',
+      'Songs/Force of Nature.mp3',
+      'Songs/Bread Club - Predictable.mp3',
       'Songs/Tokyo.mp3',
       'Songs/Forever - Bread Club & Phil Fresh.mp3',
       'Songs/hOT mESS - Bread Club (Official Music Video).mp3',
@@ -1038,29 +1048,44 @@
     let radioAudio = null;
     let radioTrackIndex = 0;
     let radioStarted = false;
+    let radioTuningTimer = null;
 
     function startRadio() {
       if (radioStarted) return;
       radioStarted = true;
       radioAudio = new Audio();
       radioAudio.volume = 0.3;
-      playRadioTuning();
+      playSong(0); // Start directly with first song, no static
     }
 
     function playRadioTuning() {
       if (!radioAudio) return;
+      if (radioTuningTimer) { clearTimeout(radioTuningTimer); radioTuningTimer = null; }
+      radioAudio.onended = null;
       radioAudio.src = RADIO_TUNING;
-      radioAudio.onended = () => playSong(radioTrackIndex);
-      radioAudio.play().catch(() => {});
+      let onMeta = () => {
+        radioAudio.removeEventListener('loadedmetadata', onMeta);
+        let maxOffset = Math.max(0, radioAudio.duration - 6);
+        radioAudio.currentTime = Math.random() * maxOffset;
+        radioAudio.play().catch(() => {});
+        radioTuningTimer = setTimeout(() => {
+          radioTuningTimer = null;
+          radioAudio.pause();
+          playSong(radioTrackIndex);
+        }, 5000);
+      };
+      radioAudio.addEventListener('loadedmetadata', onMeta);
+      radioAudio.load();
     }
 
     function playSong(index) {
       if (!radioAudio) return;
+      if (radioTuningTimer) { clearTimeout(radioTuningTimer); radioTuningTimer = null; }
       radioTrackIndex = index % SOUNDTRACK.length;
       radioAudio.src = SOUNDTRACK[radioTrackIndex];
       radioAudio.onended = () => {
         radioTrackIndex = (radioTrackIndex + 1) % SOUNDTRACK.length;
-        playRadioTuning(); // Play radio tuning between songs
+        playRadioTuning();
       };
       radioAudio.play().catch(() => {});
     }
@@ -1115,21 +1140,23 @@
       let m = MISSIONS[index];
       missionIndex = index;
       mission.active = true;
-      mission.state = m.id === 0 ? 'GO_TO_BANK' : m.id === 1 ? 'STEAL_CAR' : m.id === 2 ? 'GO_TO_STORE' : m.id === 3 ? 'GO_TO_CARPARK' : 'GO_TO_AIRPORT';
+      mission.state = m.id === 0 ? 'GO_TO_BANK' : m.id === 1 ? 'STEAL_CAR' : m.id === 2 ? 'GO_TO_STORE' : m.id === 3 ? 'DESTROY_CARS' : m.id === 4 ? 'GO_TO_CARPARK' : 'GO_TO_AIRPORT';
       mission.target = new THREE.Vector3(m.target[0], m.target[1], m.target[2]);
       document.getElementById('objective-text').innerText = m.objective;
       // Show/hide markers
       if (bankMarkerGroup) bankMarkerGroup.visible = (index === 0);
       if (storeMarkerGroup) storeMarkerGroup.visible = (index === 2 || playerInventory.has('store_unlocked'));
-      if (carparkMarkerGroup) carparkMarkerGroup.visible = (index === 3);
+      if (carparkMarkerGroup) carparkMarkerGroup.visible = (index === 4);
       if (alleyMarkerGroup) alleyMarkerGroup.visible = (index === 1);
       if (bankCashWad) { bankCashWad.visible = (index === 0); bankCashWad.userData.animating = false; bankCashWad.scale.setScalar(1); }
       // Show phone message for missions after the first (first is handled via pendingPhoneMessage)
       if (index > 0) setTimeout(() => showPhoneMessage(m.phoneStart, 20000), 500);
       // Mission 2: set wanted level - cops are chasing from the bank robbery
       if (index === 1) { setWantedLevel(3); }
-      // Reset carpark counter for mission 4
-      if (index === 3) { carparkCarsDestroyed = 0; carparkCarsSpawned = false; }
+      // Reset car destroy counter for mission 4
+      if (index === 3) { carsDestroyedCount = 0; updateCarCounter(); }
+      // Reset carpark block counter for mission 5
+      if (index === 4) { carparkBlocksDestroyed = 0; carparkCarsSpawned = false; }
       return m;
     }
 
@@ -1149,11 +1176,33 @@
         case 'drive_skill': break;
         case 'rocket_equip': currentWeapon = 'rocket'; playerInventory.add('rocket'); applyWeaponVisual('rocket'); break;
         case 'store_open': playerInventory.add('store_unlocked'); if (storeMarkerGroup) storeMarkerGroup.visible = true; break;
+        case 'car_crusher': break;
         case 'explosion_expert': break;
         case 'master': break;
         case 'island': break;
       }
       updateHUD();
+    }
+
+    function updateCarCounter() {
+      let el = document.getElementById('car-counter');
+      if (!el) return;
+      if (missionIndex === 3 && mission.state === 'DESTROY_CARS') {
+        el.style.display = 'flex';
+        el.innerHTML = '';
+        for (let i = 0; i < CARS_NEEDED; i++) {
+          let icon = document.createElement('span');
+          icon.innerText = '🚗';
+          icon.style.fontSize = '24px';
+          icon.style.filter = i < carsDestroyedCount ? 'none' : 'grayscale(1) opacity(0.3)';
+          icon.style.transition = 'filter 0.3s, transform 0.3s';
+          if (i < carsDestroyedCount) icon.style.transform = 'scale(1.2)';
+          el.appendChild(icon);
+        }
+        document.getElementById('objective-text').innerText = 'DESTROY CARS: ' + carsDestroyedCount + '/' + CARS_NEEDED;
+      } else {
+        el.style.display = 'none';
+      }
     }
 
     function applyWeaponVisual(weaponId) {
@@ -1172,6 +1221,8 @@
       mission.state = 'SUCCESS'; mission.active = false;
       document.exitPointerLock();
       if (waypointArrow3D) waypointArrow3D.visible = false;
+      let carCounter = document.getElementById('car-counter');
+      if (carCounter) carCounter.style.display = 'none';
 
       let container = document.getElementById('mission-success');
       container.innerHTML = '';
@@ -1766,7 +1817,7 @@
       sctx.fillText('STORE', 256, 64);
       let storeSignTex = new THREE.CanvasTexture(storeSignCanvas);
       let storeSignMesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), new THREE.MeshBasicMaterial({ map: storeSignTex, side: THREE.DoubleSide }));
-      storeSignMesh.position.set(STORE_POS.x, 7, STORE_POS.z - 10);
+      storeSignMesh.position.set(STORE_POS.x, 14, STORE_POS.z);
       scene.add(storeSignMesh);
 
       // Store Marker (green)
@@ -1868,6 +1919,22 @@
       camera.position.set(0, 50, 50); camera.lookAt(0, 0, 0);
       updateChunks();
       spawnTraffic();
+
+      // Bank Teller NPC - stands behind counter in the bank
+      bankTellerNPC = new Pedestrian('CIVILIAN', 72, 70);
+      bankTellerNPC.pos.y = 2;
+      bankTellerNPC.yaw = Math.PI; // Face toward entrance
+      bankTellerNPC.stationary = true;
+      peds.push(bankTellerNPC);
+
+      // Store Shopkeeper NPC - stands behind counter in the store
+      let shopkeeperNPC = new Pedestrian('CIVILIAN', -73, 26);
+      shopkeeperNPC.pos.y = 2;
+      shopkeeperNPC.yaw = 0; // Face toward entrance
+      shopkeeperNPC.stationary = true;
+      shopkeeperNPC.isShopkeeper = true;
+      peds.push(shopkeeperNPC);
+
       requestAnimationFrame(animate);
     }
 
@@ -1973,10 +2040,15 @@
         let glassType = gTypesArr[Math.floor(bHash * 200) % gTypesArr.length];
         let trimType = bTypesArr[Math.floor(bHash * 300) % bTypesArr.length];
 
+        // Perimeter barrier detection
+        let distFromOrigin = Math.sqrt(centerX * centerX + centerZ * centerZ);
+        let isPerimeter = (distFromOrigin > 850 && distFromOrigin < 1050 && zone !== 'AIRPORT' && zone !== 'ISLAND');
+
         // Zone-specific building height
         let buildingHeight = 0;
-        if (isBank) { buildingHeight = 25; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_BLUE; }
-        else if (isStore) { buildingHeight = 8; wallType = TYPES.BRICK_RED; glassType = TYPES.GLASS_BLUE; }
+        if (isPerimeter) { buildingHeight = 40; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_DARK; }
+        else if (isBank) { buildingHeight = 25; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_BLUE; }
+        else if (isStore) { buildingHeight = 18; wallType = TYPES.BRICK_RED; glassType = TYPES.GLASS_BLUE; }
         else if (isCarpark) { buildingHeight = 20; wallType = TYPES.CONCRETE; }
         else if (isAlley) { buildingHeight = 0; } // Open alley/safe zone
         else if (zone === 'DOWNTOWN') {
@@ -2006,6 +2078,12 @@
             // Water determination by zone
             let isWater = false;
             if (zone === 'OCEAN') {
+              if (isPerimeter) {
+                // Perimeter barrier: solid concrete wall instead of water
+                this.setBlock(lx, 0, lz, TYPES.CONCRETE_DARK);
+                for (let py = 1; py <= 40; py++) this.setBlock(lx, py, lz, TYPES.CONCRETE_DARK);
+                continue; // Skip all other generation for this block
+              }
               isWater = true;
             } else if (zone === 'ISLAND') {
               let idDist = Math.sqrt((wx - ISLAND_X) * (wx - ISLAND_X) + (wz - ISLAND_Z) * (wz - ISLAND_Z));
@@ -2126,7 +2204,7 @@
 
                 // Special buildings: bank gets larger footprint
                 if (isBank) { bWidth = maxFootprint; bDepth = maxFootprint; bStartX = margin; bStartZ = margin; }
-                if (isStore) { bWidth = Math.min(14, maxFootprint); bDepth = Math.min(12, maxFootprint); }
+                if (isStore) { bWidth = Math.min(20, maxFootprint); bDepth = Math.min(16, maxFootprint); }
 
                 if (lx >= bStartX && lx < bStartX + bWidth && lz >= bStartZ && lz < bStartZ + bDepth) {
                   let isWall = (lx === bStartX || lx === bStartX + bWidth - 1) || (lz === bStartZ || lz === bStartZ + bDepth - 1);
@@ -2188,19 +2266,23 @@
                     // === STORE INTERIOR ===
                     if (isStore) {
                       if (effectiveWall) {
-                        // Glass front wall, brick sides
-                        if (lz === bStartZ && y <= 5) this.setBlock(lx, y, lz, TYPES.GLASS_BLUE);
+                        // Large glass front wall, brick sides
+                        if (lz === bStartZ && y <= 8) this.setBlock(lx, y, lz, TYPES.GLASS_BLUE);
                         else this.setBlock(lx, y, lz, isWindow ? TYPES.GLASS_BLUE : TYPES.BRICK_RED);
                       } else if (y === 1) {
                         this.setBlock(lx, y, lz, TYPES.WOOD);
                       } else if (y === 2) {
-                        // Display shelves along walls
+                        // Display shelves along side walls
                         if ((lx === bStartX + 1 || lx === bStartX + bWidth - 2) && lz > bStartZ + 2 && lz < bStartZ + bDepth - 2) {
                           this.setBlock(lx, y, lz, TYPES.WOOD);
                         }
-                        // Center display counter
-                        if (lz === midZ && lx >= midX - 2 && lx <= midX + 2) {
+                        // Counter at back of store (shopkeeper stands behind this)
+                        if (lz === bStartZ + bDepth - 4 && lx >= midX - 4 && lx <= midX + 4) {
                           this.setBlock(lx, y, lz, TYPES.STEEL);
+                        }
+                        // Center display tables
+                        if (lz === midZ && (lx === midX - 2 || lx === midX + 2)) {
+                          this.setBlock(lx, y, lz, TYPES.WOOD);
                         }
                       }
                       continue;
@@ -2217,21 +2299,21 @@
                       let isRamp = (lx >= rampX && lx <= rampEndX && lz >= bStartZ + 1 && lz <= bStartZ + 3);
                       let rampY = 1 + Math.floor((lz - bStartZ) * 1.0 + (y - 1) % 5);
 
+                      let placed = false;
                       if (isPillar) {
-                        this.setBlock(lx, y, lz, TYPES.STEEL);
+                        this.setBlock(lx, y, lz, TYPES.STEEL); placed = true;
                       } else if (effectiveWall) {
-                        // Open sides: only place wall blocks at corners and every 6 blocks
-                        if (lx % 6 === 0 || lz % 6 === 0) this.setBlock(lx, y, lz, TYPES.CONCRETE);
+                        if (lx % 6 === 0 || lz % 6 === 0) { this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true; }
                       } else if (isFloorSlab) {
-                        this.setBlock(lx, y, lz, TYPES.CONCRETE);
+                        this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true;
                       } else if (isRamp && (y % 5 >= 1 && y % 5 <= 3)) {
-                        // Ramp blocks
                         let rampLevel = Math.floor((y - 1) / 5);
                         let ry = floorLevels[rampLevel] || 1;
                         let rampProgress = (lz - bStartZ - 1) / 2.0;
                         let rampBlockY = ry + Math.floor(rampProgress * 4);
-                        if (y === rampBlockY || y === rampBlockY + 1) this.setBlock(lx, y, lz, TYPES.CONCRETE);
+                        if (y === rampBlockY || y === rampBlockY + 1) { this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true; }
                       }
+                      if (placed) carparkTotalBlocks++;
                       continue;
                     }
 
@@ -2428,14 +2510,32 @@
     }
 
     function updateChunks() {
-      let px = Math.floor(player.pos.x / CHUNK_SIZE);
-      let pz = Math.floor(player.pos.z / CHUNK_SIZE);
+      let viewPos = (currentVehicle && !currentVehicle.isDead) ? currentVehicle.pos : player.pos;
+      let px = Math.floor(viewPos.x / CHUNK_SIZE);
+      let pz = Math.floor(viewPos.z / CHUNK_SIZE);
+      // Increase view distance when driving for lookahead
+      let vd = (currentVehicle && !currentVehicle.isDead) ? VIEW_DISTANCE + 2 : VIEW_DISTANCE;
       let keep = new Set();
-      for (let x = px - VIEW_DISTANCE; x <= px + VIEW_DISTANCE; x++) {
-        for (let z = pz - VIEW_DISTANCE; z <= pz + VIEW_DISTANCE; z++) {
+      for (let x = px - vd; x <= px + vd; x++) {
+        for (let z = pz - vd; z <= pz + vd; z++) {
           let mapKey = x + "," + z;
           keep.add(mapKey);
           if (!activeChunks.has(mapKey)) activeChunks.set(mapKey, new Chunk(x, z));
+        }
+      }
+      // Also preload chunks in vehicle movement direction
+      if (currentVehicle && !currentVehicle.isDead) {
+        let vel = currentVehicle.vel;
+        let speed = Math.sqrt(vel.x * vel.x + vel.z * vel.z);
+        if (speed > 5) {
+          let dirX = vel.x / speed, dirZ = vel.z / speed;
+          for (let ahead = vd + 1; ahead <= vd + 3; ahead++) {
+            let fx = px + Math.round(dirX * ahead);
+            let fz = pz + Math.round(dirZ * ahead);
+            let mapKey = fx + "," + fz;
+            keep.add(mapKey);
+            if (!activeChunks.has(mapKey)) activeChunks.set(mapKey, new Chunk(fx, fz));
+          }
         }
       }
       for (let [mapKey, chunk] of activeChunks.entries()) {
@@ -2454,6 +2554,9 @@
     function triggerDestroy(wx, wy, wz, velDir, isPlayerAction = false) {
       wx = Math.round(wx); wy = Math.round(wy); wz = Math.round(wz);
       let cx = Math.floor(wx / CHUNK_SIZE), cz = Math.floor(wz / CHUNK_SIZE);
+      // Perimeter barrier is indestructible
+      let chCx = cx * CHUNK_SIZE + CHUNK_SIZE / 2, chCz = cz * CHUNK_SIZE + CHUNK_SIZE / 2;
+      if (Math.sqrt(chCx * chCx + chCz * chCz) > 850) return false;
       let mapKey = cx + "," + cz, chunk = activeChunks.get(mapKey);
       if (chunk) {
         let type = chunk.destroyBlock(wx - (cx * CHUNK_SIZE), wy, wz - (cz * CHUNK_SIZE));
@@ -2468,6 +2571,13 @@
               if (wx > 48 && wx < 96 && wz > 48 && wz < 96) {
                 // Secret gold found logic
               }
+            }
+            // Mission 5: Track carpark block destruction
+            if (missionIndex === 4 && mission.state === 'DESTROY_CARPARK' && cx === 4 && cz === -1) {
+              carparkBlocksDestroyed++;
+              let pct = carparkTotalBlocks > 0 ? Math.floor((carparkBlocksDestroyed / carparkTotalBlocks) * 100) : 0;
+              document.getElementById('objective-text').innerText = 'DESTROY CARPARK: ' + pct + '%';
+              if (pct >= 50) triggerMissionSuccess();
             }
           }
           return true;
@@ -2667,14 +2777,11 @@
           this.voxelGroup.destroyCompletely();
           if (isPlayerAction && this !== currentVehicle) {
             spawnCashPickup(this.pos.x, this.pos.y, this.pos.z, 500);
-            // Carpark mission tracking
+            // Mission 4: Destroy 5 cars - any car counts
             if (missionIndex === 3 && mission.state === 'DESTROY_CARS') {
-              let dx = this.pos.x - CARPARK_POS.x, dz = this.pos.z - CARPARK_POS.z;
-              if (dx*dx + dz*dz < 2500) {
-                carparkCarsDestroyed++;
-                document.getElementById('objective-text').innerText = 'DESTROY CARS: ' + carparkCarsDestroyed + '/' + CARPARK_CARS_NEEDED;
-                if (carparkCarsDestroyed >= CARPARK_CARS_NEEDED) triggerMissionSuccess();
-              }
+              carsDestroyedCount++;
+              updateCarCounter();
+              if (carsDestroyedCount >= CARS_NEEDED) triggerMissionSuccess();
             }
           }
           if (this === currentVehicle) {
@@ -2754,6 +2861,13 @@
             this.state = 'ESCAPED'; this.isDead = true; this.group.visible = false;
             triggerMissionSuccess();
           }
+        } else if (this.stationary) {
+          // Stationary NPC (bank teller, shopkeeper) - just stand in place
+          this.vel.x = 0; this.vel.z = 0;
+          this.animate(dt, 0);
+          this.group.position.copy(this.pos);
+          this.group.rotation.y = this.yaw;
+          return;
         } else {
           // Civilians prefer sidewalks
           let pxMod = Math.abs(this.pos.x) % CHUNK_SIZE;
@@ -2839,6 +2953,7 @@
         return true;
       });
       peds = peds.filter(p => {
+        if (p.stationary) return true; // Never cull stationary NPCs (teller, shopkeeper)
         if (p.pos.distanceToSquared(player.pos) > CHUNK_SIZE * CHUNK_SIZE * 9 || p.isDead) { p.dispose(); return false; }
         return true;
       });
@@ -2950,12 +3065,12 @@
     }
 
     function addChaos(amount) {
-      // Only raise wanted if a cop is nearby to witness, or if it's really extreme
+      // Only ignore very minor block destruction without witness
       let witnessed = isCopNearby();
-      if (!witnessed && amount < 100) return; // Minor chaos without witness = no wanted
+      if (!witnessed && amount < 5) return;
       chaos += amount; let old = wantedLevel;
-      if (chaos > 5000) wantedLevel = 5; else if (chaos > 2500) wantedLevel = 4;
-      else if (chaos > 1000) wantedLevel = 3; else if (chaos > 400) wantedLevel = 2; else if (chaos > 150) wantedLevel = 1;
+      if (chaos > 3000) wantedLevel = 5; else if (chaos > 1500) wantedLevel = 4;
+      else if (chaos > 500) wantedLevel = 3; else if (chaos > 200) wantedLevel = 2; else if (chaos > 80) wantedLevel = 1;
       if (wantedLevel > old) {
         setWantedLevel(wantedLevel);
       }
@@ -2991,7 +3106,7 @@
               showPhoneMessage("Boss: Good, you got wheels. Floor it to the alley in the west side. Lose those cops!", 15000);
             }
             // Mission 5: steal plane detection
-            if (missionIndex === 4 && mission.state === 'GO_TO_AIRPORT' && v.type === 'PLANE') {
+            if (missionIndex === 5 && mission.state === 'GO_TO_AIRPORT' && v.type === 'PLANE') {
               mission.state = 'FLY_TO_ISLAND';
               mission.target.set(ISLAND_X, 1, ISLAND_Z);
               document.getElementById('objective-text').innerText = 'FLY TO THE ISLAND';
@@ -3068,7 +3183,7 @@
             robBank();
           } else if (distToStore < 10 && (missionIndex >= 2 || playerInventory.has('store_unlocked'))) {
             openStore();
-            if (missionIndex === 2 && mission.state === 'GO_TO_STORE') mission.state = 'BUY_WEAPON';
+            if (missionIndex === 2 && (mission.state === 'GO_TO_STORE' || mission.state === 'ENTER_STORE')) mission.state = 'BUY_WEAPON';
           } else {
             interactVehicle();
           }
@@ -3163,7 +3278,8 @@
       let distEl = document.getElementById('waypoint-dist');
       // Only show arrow when mission is active and phone has appeared (tutorial dismissed)
       let phoneShown = !pendingPhoneMessage && document.getElementById('tutorial-overlay').style.display === 'none';
-      if (mission.active && mission.state !== 'SUCCESS' && mission.state !== 'DONE' && waypointArrow3D && phoneShown) {
+      let noArrowState = mission.state === 'SUCCESS' || mission.state === 'DONE' || (missionIndex === 3 && mission.state === 'DESTROY_CARS');
+      if (mission.active && !noArrowState && waypointArrow3D && phoneShown) {
         waypointArrow3D.visible = true;
         distEl.style.display = 'block';
         let playerPos = currentVehicle ? currentVehicle.pos : player.pos;
@@ -3374,17 +3490,22 @@
 
       // Mission proximity checks
       let pPos = currentVehicle ? currentVehicle.pos : player.pos;
+      // Mission 3: Store proximity phone message - remind to buy rocket launcher
+      if (mission.active && mission.state === 'GO_TO_STORE' && !currentVehicle && pPos.distanceToSquared(STORE_POS) < 400) {
+        showPhoneMessage("Boss: You're at the store. Get inside and buy the Rocket Launcher! Press F to enter.", 10000);
+        mission.state = 'ENTER_STORE';
+      }
       if (mission.active && mission.state === 'DRIVE_TO_ALLEY' && pPos.distanceToSquared(ALLEY_POS) < 225) {
         // Near alley - set wanted to 0 instantly (safe zone)
         wantedLevel = 0; wantedTimer = 20; chaos = 0; copsKilled = 0; updateHUD();
         document.querySelectorAll('#wanted-level span').forEach(s => { s.style.opacity = '1'; s.style.animation = ''; });
         triggerMissionSuccess();
       }
+      // Mission 5: Carpark block destruction - proximity triggers the mission phase
       if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 400) {
-        mission.state = 'DESTROY_CARS';
-        document.getElementById('objective-text').innerText = 'DESTROY CARS: 0/' + CARPARK_CARS_NEEDED;
-        showPhoneMessage("Boss: You're at the carpark. Light it up! Destroy " + CARPARK_CARS_NEEDED + " cars with that rocket launcher!", 15000);
-        spawnCarparkCars();
+        mission.state = 'DESTROY_CARPARK';
+        document.getElementById('objective-text').innerText = 'DESTROY CARPARK: 0%';
+        showPhoneMessage("Boss: You're at the carpark. Level this building! Destroy at least 50% of it with your rocket launcher!", 15000);
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
@@ -3488,10 +3609,10 @@
         if (copSpawnTimer <= 0) {
           let copVehicles = vehicles.filter(v => v.type === 'COP' || v.type === 'ARMY').length;
           let copPeds = peds.filter(p => p.type === 'COP' || p.type === 'ARMY').length;
-          let maxCops = wantedLevel * 2;
+          let maxCops = wantedLevel * 3;
           if (copVehicles + copPeds < maxCops * 2) {
              spawnCop();
-             copSpawnTimer = 6.0 / wantedLevel; // Cops arrive gradually, not instantly
+             copSpawnTimer = 4.0 / wantedLevel; // Cops arrive faster
           }
         }
       }
