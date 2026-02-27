@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Voxel Heist - Realistic City</title>
+  <title>JEE TEE AYY SIX</title>
   
   <!-- Add an import map to fix the bare "three" module specifier error -->
   <script type="importmap">
@@ -603,9 +603,9 @@
   <div id="crime-overlay"></div>
   <div id="crime-text">CRIME REPORTED!</div>
 
-  <div id="phone-ui">
+  <div id="phone-ui" style="display:none;">
     <div class="phone-header">Message from: Boss</div>
-    <div id="phone-text">...</div>
+    <div id="phone-text"></div>
   </div>
 
   <div id="mission-success"></div>
@@ -669,9 +669,9 @@
   </div>
 
   <div id="start-screen">
-    <h1 style="font-size: 64px; color: gold; text-shadow: 5px 5px 0 #000; margin: 0; letter-spacing: 2px;">VOXEL HEIST</h1>
+    <h1 style="font-size: 54px; color: gold; text-shadow: 5px 5px 0 #000; margin: 0; letter-spacing: 2px;">JEE TEE AYY SIX</h1>
     <p style="font-size: 18px; max-width: 600px; color: #ddd; margin-top: 10px;">
-      A massive destructible voxel city with downtown skyscrapers, suburbs, an airport with flyable planes, and an island to explore!
+      A massive destructible city with downtown skyscrapers, suburbs, an airport with flyable planes, and an island to explore!
     </p>
     <button id="start-btn" class="play-btn">START MISSION 1</button>
   </div>
@@ -1020,16 +1020,21 @@
     const CARPARK_CARS_NEEDED = 10;
 
     function showPhoneMessage(text, duration = 20000) {
+      if (!text) return;
       currentPhoneMessage = text;
       let phone = document.getElementById('phone-ui');
       document.getElementById('phone-text').innerText = text;
       let pauseMissionEl = document.getElementById('pause-mission-text');
       if (pauseMissionEl) pauseMissionEl.innerText = text;
+      phone.style.display = 'flex';
       phone.classList.remove('active');
-      void phone.offsetWidth; // force reflow to restart animation
+      void phone.offsetWidth;
       phone.classList.add('active');
       if (phone._hideTimer) clearTimeout(phone._hideTimer);
-      phone._hideTimer = setTimeout(() => phone.classList.remove('active'), duration);
+      phone._hideTimer = setTimeout(() => {
+        phone.classList.remove('active');
+        setTimeout(() => { phone.style.display = 'none'; }, 700); // hide after slide-out animation
+      }, duration);
     }
 
     window.togglePause = function() {
@@ -1071,6 +1076,10 @@
       if (carparkMarkerGroup) carparkMarkerGroup.visible = (index === 3);
       if (alleyMarkerGroup) alleyMarkerGroup.visible = (index === 1);
       if (bankCashWad) { bankCashWad.visible = (index === 0); bankCashWad.userData.animating = false; bankCashWad.scale.setScalar(1); }
+      // Show phone message for missions after the first (first is handled via pendingPhoneMessage)
+      if (index > 0) setTimeout(() => showPhoneMessage(m.phoneStart, 20000), 500);
+      // Reset carpark counter for mission 4
+      if (index === 3) { carparkCarsDestroyed = 0; carparkCarsSpawned = false; }
       return m;
     }
 
@@ -1277,11 +1286,11 @@
       document.getElementById('start-screen').style.display = 'none';
       document.getElementById('tutorial-overlay').style.display = 'flex';
       isPlaying = true;
-      renderer.domElement.requestPointerLock();
       startMission(0);
-      let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
       pendingPhoneMessage = MISSIONS[0].phoneStart;
-      if (isMobile) setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), 500);
+      let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
+      if (isMobile) { let msg = pendingPhoneMessage; setTimeout(() => showPhoneMessage(msg, 20000), 500); }
+      renderer.domElement.requestPointerLock(); // Must be AFTER setting pendingPhoneMessage
     }
     let pendingPhoneMessage = null;
 
@@ -1307,8 +1316,9 @@
         tut.style.display = 'none';
         // Show pending phone message now that tutorial is gone
         if (pendingPhoneMessage) {
-          setTimeout(() => showPhoneMessage(pendingPhoneMessage, 20000), 300);
+          let msg = pendingPhoneMessage;
           pendingPhoneMessage = null;
+          setTimeout(() => showPhoneMessage(msg, 20000), 300);
         }
       }
     }
@@ -1699,6 +1709,18 @@
       bankCashWad.position.set(72, 6, 66);
       scene.add(bankCashWad);
 
+      // Store building sign
+      let storeSignCanvas = document.createElement('canvas');
+      storeSignCanvas.width = 512; storeSignCanvas.height = 128;
+      let sctx = storeSignCanvas.getContext('2d');
+      sctx.fillStyle = '#1b5e20'; sctx.fillRect(0, 0, 512, 128);
+      sctx.fillStyle = '#ffffff'; sctx.font = 'bold 80px sans-serif'; sctx.textAlign = 'center'; sctx.textBaseline = 'middle';
+      sctx.fillText('STORE', 256, 64);
+      let storeSignTex = new THREE.CanvasTexture(storeSignCanvas);
+      let storeSignMesh = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), new THREE.MeshBasicMaterial({ map: storeSignTex, side: THREE.DoubleSide }));
+      storeSignMesh.position.set(STORE_POS.x, 7, STORE_POS.z - 10);
+      scene.add(storeSignMesh);
+
       // Store Marker (green)
       storeMarkerGroup = new THREE.Group();
       storeMarkerGroup.position.copy(STORE_POS).setY(0);
@@ -2012,6 +2034,17 @@
                 this.setBlock(lx, 1, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? TYPES.GRASS : TYPES.CONCRETE);
+                // Alley safe zone: green ground markers
+                if (isAlley && !isRoad && lx >= 16 && lx <= 32 && lz >= 16 && lz <= 32) {
+                  this.setBlock(lx, 0, lz, TYPES.GRASS);
+                  // Walls on sides to form alley corridor
+                  if ((lx === 16 || lx === 32) && lz >= 16 && lz <= 32) {
+                    for (let wy = 1; wy <= 8; wy++) this.setBlock(lx, wy, lz, TYPES.BRICK_BROWN);
+                  }
+                  if ((lz === 16 || lz === 32) && lx > 16 && lx < 32 && !(lx >= 22 && lx <= 26)) {
+                    for (let wy = 1; wy <= 8; wy++) this.setBlock(lx, wy, lz, TYPES.BRICK_BROWN);
+                  }
+                }
               }
 
               let margin = ROAD_WIDTH + 1;
@@ -2034,14 +2067,19 @@
                 // Downtown setback height (narrower at top)
                 let setbackH = (zone === 'DOWNTOWN' && buildingHeight > 40) ? Math.floor(buildingHeight * 0.55) : buildingHeight;
 
+                // Special buildings: bank gets larger footprint
+                if (isBank) { bWidth = maxFootprint; bDepth = maxFootprint; bStartX = margin; bStartZ = margin; }
+                if (isStore) { bWidth = Math.min(14, maxFootprint); bDepth = Math.min(12, maxFootprint); }
+
                 if (lx >= bStartX && lx < bStartX + bWidth && lz >= bStartZ && lz < bStartZ + bDepth) {
                   let isWall = (lx === bStartX || lx === bStartX + bWidth - 1) || (lz === bStartZ || lz === bStartZ + bDepth - 1);
                   let midX = Math.floor(bStartX + bWidth / 2);
+                  let midZ = Math.floor(bStartZ + bDepth / 2);
 
                   for (let y = 1; y <= buildingHeight; y++) {
                     // Setback logic for downtown towers
                     let effectiveWall = isWall;
-                    if (y > setbackH && zone === 'DOWNTOWN') {
+                    if (y > setbackH && zone === 'DOWNTOWN' && !isBank && !isStore && !isCarpark) {
                       let shrink = Math.floor((y - setbackH) / 4) + 2;
                       if (lx < bStartX + shrink || lx >= bStartX + bWidth - shrink || lz < bStartZ + shrink || lz >= bStartZ + bDepth - shrink) continue;
                       effectiveWall = (lx === bStartX + shrink || lx === bStartX + bWidth - shrink - 1) || (lz === bStartZ + shrink || lz === bStartZ + bDepth - shrink - 1);
@@ -2054,22 +2092,88 @@
 
                     let bType = wallType;
 
-                    // Bank special interior
+                    // === BANK INTERIOR ===
                     if (isBank) {
-                      bType = TYPES.GOLD;
                       if (effectiveWall) {
-                        if (y === buildingHeight || (y % 5 === 1 && y > 1)) this.setBlock(lx, y, lz, trimType);
-                        else this.setBlock(lx, y, lz, isWindow ? glassType : bType);
+                        if (y <= 3) this.setBlock(lx, y, lz, TYPES.CONCRETE_DARK); // Stone base
+                        else if (isWindow) this.setBlock(lx, y, lz, TYPES.GLASS_BLUE);
+                        else if (y === buildingHeight) this.setBlock(lx, y, lz, TYPES.CONCRETE_DARK);
+                        else this.setBlock(lx, y, lz, TYPES.CONCRETE_DARK);
+                      } else if (y === 1) {
+                        this.setBlock(lx, y, lz, TYPES.WOOD); // Wood floor
+                      } else if (y === 2) {
+                        // L-shaped teller counter
+                        let counterZ = bStartZ + 8;
+                        let counterZside = bStartZ + 5;
+                        if ((lz === counterZ && lx >= midX - 6 && lx <= midX + 6) ||
+                            (lz >= counterZside && lz <= counterZ && (lx === midX - 6 || lx === midX + 6))) {
+                          this.setBlock(lx, y, lz, TYPES.WOOD);
+                        }
+                        // Benches in waiting area
+                        if (lz === bStartZ + 3 && (lx === midX - 3 || lx === midX + 3 || lx === midX)) {
+                          this.setBlock(lx, y, lz, TYPES.WOOD);
+                        }
+                        // Velvet rope barriers (red blocks)
+                        if (lz === bStartZ + 5 && lx >= midX - 4 && lx <= midX + 4 && lx !== midX) {
+                          this.setBlock(lx, y, lz, TYPES.RED);
+                        }
+                      }
+                      // Vault room at back
+                      if (lx >= midX - 4 && lx <= midX + 4 && lz >= bStartZ + bDepth - 8 && lz <= bStartZ + bDepth - 2 && y <= 6) {
+                        let isVW = (lx === midX - 4 || lx === midX + 4 || lz === bStartZ + bDepth - 8 || lz === bStartZ + bDepth - 2 || y === 6);
+                        let isVD = (lz === bStartZ + bDepth - 8 && lx >= midX - 1 && lx <= midX + 1 && y <= 3);
+                        if (isVW && !isVD) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        else if (!isVW && y === 2 && Math.random() > 0.5) this.setBlock(lx, y, lz, TYPES.GOLD);
+                      }
+                      continue;
+                    }
+
+                    // === STORE INTERIOR ===
+                    if (isStore) {
+                      if (effectiveWall) {
+                        // Glass front wall, brick sides
+                        if (lz === bStartZ && y <= 5) this.setBlock(lx, y, lz, TYPES.GLASS_BLUE);
+                        else this.setBlock(lx, y, lz, isWindow ? TYPES.GLASS_BLUE : TYPES.BRICK_RED);
                       } else if (y === 1) {
                         this.setBlock(lx, y, lz, TYPES.WOOD);
-                      } else if (lx >= midX - 3 && lx <= midX + 3 && lz >= bStartZ + bDepth - 8 && lz <= bStartZ + bDepth - 2 && y <= 5) {
-                        let isVaultWall = (lx === midX - 3 || lx === midX + 3 || lz === bStartZ + bDepth - 8 || lz === bStartZ + bDepth - 2 || y === 5);
-                        let isVaultDoor = (lz === bStartZ + bDepth - 8 && lx >= midX - 1 && lx <= midX + 1 && y <= 3);
-                        if (isVaultWall && !isVaultDoor) this.setBlock(lx, y, lz, TYPES.STEEL);
-                        else if (!isVaultWall && y === 2 && Math.random() > 0.6) this.setBlock(lx, y, lz, TYPES.GOLD);
-                      } else if (lx >= midX - 4 && lx <= midX + 4 && lz === bStartZ + 6 && y <= 2) {
-                        if (lx !== midX) this.setBlock(lx, y, lz, TYPES.WOOD);
-                        else if (y === 1) this.setBlock(lx, y, lz, TYPES.WOOD);
+                      } else if (y === 2) {
+                        // Display shelves along walls
+                        if ((lx === bStartX + 1 || lx === bStartX + bWidth - 2) && lz > bStartZ + 2 && lz < bStartZ + bDepth - 2) {
+                          this.setBlock(lx, y, lz, TYPES.WOOD);
+                        }
+                        // Center display counter
+                        if (lz === midZ && lx >= midX - 2 && lx <= midX + 2) {
+                          this.setBlock(lx, y, lz, TYPES.STEEL);
+                        }
+                      }
+                      continue;
+                    }
+
+                    // === CARPARK ===
+                    if (isCarpark) {
+                      let floorLevels = [1, 6, 11, 16];
+                      let isFloorSlab = floorLevels.includes(y);
+                      let isPillar = ((lx === bStartX || lx === bStartX + bWidth - 1 || lx === midX) &&
+                                      (lz === bStartZ || lz === bStartZ + bDepth - 1 || lz === midZ));
+                      // Ramp: diagonal connector in one corner
+                      let rampX = bStartX + 2, rampEndX = bStartX + 5;
+                      let isRamp = (lx >= rampX && lx <= rampEndX && lz >= bStartZ + 1 && lz <= bStartZ + 3);
+                      let rampY = 1 + Math.floor((lz - bStartZ) * 1.0 + (y - 1) % 5);
+
+                      if (isPillar) {
+                        this.setBlock(lx, y, lz, TYPES.STEEL);
+                      } else if (effectiveWall) {
+                        // Open sides: only place wall blocks at corners and every 6 blocks
+                        if (lx % 6 === 0 || lz % 6 === 0) this.setBlock(lx, y, lz, TYPES.CONCRETE);
+                      } else if (isFloorSlab) {
+                        this.setBlock(lx, y, lz, TYPES.CONCRETE);
+                      } else if (isRamp && (y % 5 >= 1 && y % 5 <= 3)) {
+                        // Ramp blocks
+                        let rampLevel = Math.floor((y - 1) / 5);
+                        let ry = floorLevels[rampLevel] || 1;
+                        let rampProgress = (lz - bStartZ - 1) / 2.0;
+                        let rampBlockY = ry + Math.floor(rampProgress * 4);
+                        if (y === rampBlockY || y === rampBlockY + 1) this.setBlock(lx, y, lz, TYPES.CONCRETE);
                       }
                       continue;
                     }
@@ -2711,6 +2815,26 @@
       }
     }
 
+    let carparkCarsSpawned = false;
+    function spawnCarparkCars() {
+      if (carparkCarsSpawned) return;
+      // Check if carpark chunk is loaded
+      let ck = '4,-1';
+      if (!activeChunks.has(ck)) return;
+      carparkCarsSpawned = true;
+      let baseX = 4 * CHUNK_SIZE + 24, baseZ = -1 * CHUNK_SIZE + 24;
+      let floors = [2, 7, 12, 17];
+      let colors = [0xcc2222, 0x2244aa, 0xeeeeee, 0x222222, 0xffcc00, 0x44aa44, 0x884488, 0xdd8800];
+      for (let fi = 0; fi < floors.length; fi++) {
+        for (let i = 0; i < 4; i++) {
+          let car = new Vehicle('CIVILIAN', baseX + i * 4 - 6, baseZ + (fi % 2 === 0 ? 4 : -4), colors[(fi * 4 + i) % colors.length]);
+          car.pos.y = floors[fi]; car.parked = true; car.vel.set(0, 0, 0);
+          car.mesh.position.copy(car.pos);
+          vehicles.push(car);
+        }
+      }
+    }
+
     function spawnCop() {
       if (wantedLevel === 0) return;
       let type = wantedLevel >= 4 ? 'ARMY' : 'COP';
@@ -3187,6 +3311,12 @@
         document.querySelectorAll('#wanted-level span').forEach(s => { s.style.opacity = '1'; s.style.animation = ''; });
         triggerMissionSuccess();
       }
+      if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 400) {
+        mission.state = 'DESTROY_CARS';
+        document.getElementById('objective-text').innerText = 'DESTROY CARS: 0/' + CARPARK_CARS_NEEDED;
+        showPhoneMessage("Boss: You're at the carpark. Light it up! Destroy " + CARPARK_CARS_NEEDED + " cars with that rocket launcher!", 15000);
+        spawnCarparkCars();
+      }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
         if (islandDist < 6400) triggerMissionSuccess();
@@ -3281,7 +3411,7 @@
       dirLight.target.position.copy(targetPos);
       let trafficLightIsRed = (Date.now() % 10000) < 5000;
       
-      if (Math.random() < 0.01) spawnTraffic();
+      if (Math.random() < 0.01) { spawnTraffic(); spawnCarparkCars(); }
       
       // Manage Gradual Cop Spawning based on timer rather than instantly clustering
       if (wantedLevel > 0) {
