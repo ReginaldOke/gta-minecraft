@@ -36,10 +36,12 @@
       width: 100%;
       height: 100%;
       display: block;
+      position: relative;
+      z-index: 1;
     }
 
     #ui-layer {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
@@ -152,7 +154,7 @@
     }
 
     #crime-overlay {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
@@ -164,7 +166,7 @@
     }
 
     #crime-text {
-      position: absolute;
+      position: fixed;
       top: 25%;
       left: 50%;
       transform: translate(-50%, -50%);
@@ -308,7 +310,7 @@
     #crosshair::after { top: 0; left: 11px; width: 2px; height: 24px; }
 
     #phone-ui {
-      position: absolute;
+      position: fixed;
       bottom: -350px;
       right: 30px;
       width: 280px;
@@ -362,13 +364,13 @@
     }
 
     #mission-success {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.85);
-      z-index: 200;
+      z-index: 9999;
       display: none;
       flex-direction: column;
       align-items: center;
@@ -376,6 +378,8 @@
       color: white;
       pointer-events: auto;
       font-family: 'Segoe UI', Tahoma, sans-serif;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
     }
 
     .ms-title {
@@ -427,12 +431,13 @@
     }
 
     #start-screen {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.85);
+      -webkit-transform: translateZ(0);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -677,12 +682,13 @@
     }
 
     #pause-screen {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.85);
+      -webkit-transform: translateZ(0);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -735,8 +741,9 @@
     }
 
     #store-ui {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92); display: none; z-index: 200;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.92); display: none; z-index: 9999;
+      -webkit-transform: translateZ(0);
       flex-direction: column; align-items: center; justify-content: center; color: white;
     }
     .store-title { font-size: 48px; color: #4CAF50; text-shadow: 3px 3px 0 #1b5e20; margin-bottom: 20px; }
@@ -1570,7 +1577,7 @@
     function triggerMissionSuccess() {
       let m = MISSIONS[missionIndex];
       mission.state = 'SUCCESS'; mission.active = false;
-      document.exitPointerLock();
+      try { document.exitPointerLock(); } catch(e) {}
       if (waypointArrow3D) waypointArrow3D.visible = false;
       // Hide mobile controls so they don't block the success screen
       let mAct = document.getElementById('btn-interact');
