@@ -924,7 +924,6 @@
     </div>
   </div>
 
-  <button id="mobile-help-btn" style="display:none; position:absolute; top:10px; left:10px; z-index:55; width:36px; height:36px; border-radius:50%; background:rgba(0,0,0,0.6); color:white; border:2px solid #888; font-size:18px; font-weight:bold; cursor:pointer;">?</button>
   <div id="mobile-help-modal" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; background:rgba(0,0,0,0.85); color:white; font-family:sans-serif;">
     <div style="position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; padding:0 30px;">
       <div style="font-size:20px; line-height:2.5; text-align:left; max-width:300px; margin:0 auto;">
@@ -3299,9 +3298,6 @@
       document.getElementById('start-btn').addEventListener('click', startGame);
       document.getElementById('phone-dismiss').addEventListener('click', dismissPhone);
       document.getElementById('phone-ui').addEventListener('click', dismissPhone);
-      document.getElementById('mobile-help-btn').addEventListener('click', () => {
-        document.getElementById('mobile-help-modal').style.display = 'block';
-      });
       document.getElementById('mobile-help-modal').addEventListener('click', () => {
         document.getElementById('mobile-help-modal').style.display = 'none';
       });
@@ -3312,7 +3308,6 @@
       });
       if ('ontouchstart' in window) {
         document.getElementById('mobile-controls').style.display = 'block';
-        document.getElementById('mobile-help-btn').style.display = 'block';
         document.getElementById('pause-btn').innerText = 'Pause';
         document.getElementById('swap-btn').style.display = 'inline-block';
         setupTouch();
