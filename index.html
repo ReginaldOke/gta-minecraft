@@ -730,12 +730,58 @@
         font-size: 11px !important;
       }
       .store-close-btn {
-        padding: 10px 30px !important;
-        font-size: 16px !important;
-        margin: 8px 0 15px !important;
+        padding: 16px 30px !important;
+        font-size: 18px !important;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)) !important;
       }
-      #store-ui {
+      .store-scroll {
         padding: 10px 0 !important;
+      }
+      /* Start screen & death screen mobile */
+      #start-screen {
+        padding: 24px !important;
+        box-sizing: border-box !important;
+        justify-content: center !important;
+      }
+      #start-screen h1 {
+        font-size: 34px !important;
+        letter-spacing: 1px !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+        padding: 0 10px !important;
+      }
+      #start-screen p {
+        font-size: 16px !important;
+        padding: 0 10px !important;
+      }
+      #start-controls-mobile {
+        font-size: 16px !important;
+        line-height: 2 !important;
+        margin-top: 16px !important;
+      }
+      button.play-btn {
+        padding: 16px 32px !important;
+        font-size: 18px !important;
+        max-width: calc(100% - 40px) !important;
+        margin-top: 16px !important;
+        box-sizing: border-box !important;
+      }
+      /* Pause screen mobile */
+      .pause-title {
+        font-size: 36px !important;
+        margin-bottom: 10px !important;
+        letter-spacing: 2px !important;
+      }
+      #pause-screen {
+        padding: 20px !important;
+        box-sizing: border-box !important;
+      }
+      #pause-screen .play-btn {
+        margin-top: 12px !important;
+      }
+      /* Mobile help modal */
+      #mobile-help-modal div {
+        font-size: 16px !important;
       }
     }
     .phone-dismiss {
@@ -803,11 +849,14 @@
 
     #store-ui {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.92); display: none; z-index: 9999;
-      -webkit-transform: translateZ(0);
-      flex-direction: column; align-items: center; justify-content: flex-start; color: white;
-      padding: 20px 0;
-      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      background: rgba(0,0,0,0.95); display: none; z-index: 9999;
+      flex-direction: column; align-items: center; color: white;
+      overflow: hidden;
+    }
+    .store-scroll {
+      flex: 1; min-height: 0; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 15px 0;
     }
     .store-title { font-size: 48px; color: #4CAF50; text-shadow: 3px 3px 0 #1b5e20; margin-bottom: 10px; flex-shrink: 0; }
     .store-balance { font-size: 24px; color: #ffcc00; margin-bottom: 15px; flex-shrink: 0; }
@@ -826,9 +875,11 @@
     .store-item-name { font-size: 14px; font-weight: bold; margin-bottom: 5px; }
     .store-item-price { font-size: 16px; color: #ffcc00; }
     .store-close-btn {
-      padding: 12px 40px; font-size: 20px; background: #c62828;
-      color: white; border: none; border-radius: 8px; cursor: pointer; pointer-events: auto;
-      flex-shrink: 0; margin: 15px 0 20px;
+      flex-shrink: 0; width: 100%;
+      padding: 18px 40px; font-size: 22px; background: #c62828;
+      color: white; border: none; cursor: pointer; pointer-events: auto;
+      border-top: 3px solid #e53935; box-sizing: border-box;
+      font-weight: bold; letter-spacing: 2px;
     }
     .store-close-btn:hover { background: #e53935; }
 
@@ -855,9 +906,11 @@
   <div id="mission-success"></div>
 
   <div id="store-ui">
-    <div class="store-title">WEAPON SHOP</div>
-    <div class="store-balance" id="store-balance">$0</div>
-    <div class="store-grid" id="store-grid"></div>
+    <div class="store-scroll" id="store-scroll">
+      <div class="store-title">WEAPON SHOP</div>
+      <div class="store-balance" id="store-balance">$0</div>
+      <div class="store-grid" id="store-grid"></div>
+    </div>
     <button class="store-close-btn" onclick="closeStore()" ontouchstart="event.preventDefault(); closeStore();">LEAVE SHOP</button>
   </div>
 
@@ -1396,6 +1449,14 @@
           { icon: '💰', text: '+$30,000 Builder Pay!', action: 'cash30k' },
           { icon: '🧱', text: 'Master Builder!', action: 'master_builder' },
           { icon: '🏗️', text: '+50 Free Blocks!', action: 'free_blocks' }
+        ]},
+      { id: 8, name: 'BUILD YOUR HOME', objective: 'FINAL MISSION: BUILD YOUR MANSION',
+        target: [ISLAND_X, 1, ISLAND_Z], reward: 100000,
+        phoneStart: "Boss: You've earned it, kid. That island is yours now. Time to build yourself a mansion fit for a gangster! Get to the island, switch to Build Mode, and place 40 blocks to build your dream home. Use E and F to pick different block types!",
+        rewards: [
+          { icon: '💰', text: '+$100,000 Retirement Fund!', action: 'cash100k' },
+          { icon: '🏠', text: 'Gangster Mansion Built!', action: 'mansion' },
+          { icon: '👑', text: 'CRIME LORD STATUS!', action: 'crime_lord' }
         ]}
     ];
     let missionIndex = 0;
@@ -1494,9 +1555,12 @@
 
     window.debugTeleport = function(x, y, z) { player.pos.set(x, y, z); };
     window.debugMission = function(idx) { missionIndex = idx; startMission(idx); };
+    window.debugMoney = function(n) { score += (n || 100000); updateHUD(); };
     window.debugBlocks = function(n) { n=n||20; blockInventory[TYPES.BRICK]=n; blockInventory[TYPES.GLASS]=n; blockInventory[TYPES.CONCRETE]=n; totalBlocks=n*3; updateBlockCounter(); updateHotbar(); };
     window.debugFly = function() { interactVehicle(); };
     window.debugVehicles = function() { return vehicles.filter(v => v.type === 'PLANE').map(v => ({x:Math.round(v.pos.x), y:Math.round(v.pos.y), z:Math.round(v.pos.z), dead:v.isDead})); };
+    window.debugSuccess = function() { triggerMissionSuccess(); };
+    window.debugState = function() { return { missionIndex, state: mission.state, active: mission.active, isPaused, isPlaying, storeOpen }; };
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
       if (storeOpen) { closeStore(); return; }
@@ -1521,6 +1585,7 @@
         document.getElementById('objective-text').innerText = "ALL MISSIONS COMPLETE! FREE ROAM";
         mission.active = false; mission.state = 'DONE';
       }
+      isPaused = false;
       isPlaying = true;
       if (!isMobileDevice) renderer.domElement.requestPointerLock();
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
@@ -1530,7 +1595,7 @@
       let m = MISSIONS[index];
       missionIndex = index;
       mission.active = true;
-      mission.state = m.id === 0 ? 'GO_TO_BANK' : m.id === 1 ? 'STEAL_CAR' : m.id === 2 ? 'GO_TO_STORE' : m.id === 3 ? 'DESTROY_CARS' : m.id === 4 ? 'GO_TO_CARPARK' : m.id === 5 ? 'GO_TO_AIRPORT' : m.id === 7 ? 'GO_TO_BARRICADE' : 'CAUSE_CHAOS';
+      mission.state = m.id === 0 ? 'GO_TO_BANK' : m.id === 1 ? 'STEAL_CAR' : m.id === 2 ? 'GO_TO_STORE' : m.id === 3 ? 'DESTROY_CARS' : m.id === 4 ? 'GO_TO_CARPARK' : m.id === 5 ? 'GO_TO_AIRPORT' : m.id === 7 ? 'GO_TO_BARRICADE' : m.id === 8 ? 'GO_TO_ISLAND_BUILD' : 'CAUSE_CHAOS';
       mission.target = new THREE.Vector3(m.target[0], m.target[1], m.target[2]);
       document.getElementById('objective-text').innerText = m.objective;
       // Show/hide markers
@@ -1551,7 +1616,7 @@
       // Reset carpark block counter for mission 5
       if (index === 4) { carparkBlocksDestroyed = 0; carparkCarsSpawned = false; }
       // Reset block placement counter for mission 8
-      if (index === 7) { blocksPlacedForMission = 0; }
+      if (index === 7 || index === 8) { blocksPlacedForMission = 0; }
       // Hide demolition progress UI when starting any mission
       document.getElementById('demolition-progress').style.display = 'none';
       return m;
@@ -1587,6 +1652,9 @@
           for (let ft of freeTypes) { blockInventory[ft] = (blockInventory[ft] || 0) + 10; totalBlocks += 10; }
           updateBlockCounter();
           break;
+        case 'cash100k': score += 100000; break;
+        case 'mansion': break;
+        case 'crime_lord': break;
       }
       updateHUD();
     }
@@ -1643,10 +1711,15 @@
     }
 
     function triggerMissionSuccess() {
+      if (mission.state === 'SUCCESS') return; // Guard against double-calls
       let m = MISSIONS[missionIndex];
       mission.state = 'SUCCESS'; mission.active = false;
+      isPaused = true; // Pause game during success screen
+      playerHealth = maxHealth; // Heal player so they can't die during success cinematic
       try { document.exitPointerLock(); } catch(e) {}
       if (waypointArrow3D) waypointArrow3D.visible = false;
+      // Hide death screen if it was showing
+      document.getElementById('start-screen').style.display = 'none';
       // Hide mobile controls so they don't block the success screen
       let mAct = document.getElementById('btn-interact');
       if (mAct) mAct.style.display = 'none';
@@ -1764,11 +1837,14 @@
       btn.className = 'ms-btn';
       btn.innerText = 'KEEP PLAYING';
       btn.style.pointerEvents = 'auto';
-      btn.onclick = () => {
+      let victoryHandler = () => {
         container.style.display = 'none';
         isPaused = false;
-        renderer.domElement.requestPointerLock();
+        if (!isMobileDevice) renderer.domElement.requestPointerLock();
+        if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
       };
+      btn.onclick = victoryHandler;
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); victoryHandler(); });
       container.appendChild(btn);
       setTimeout(() => btn.style.opacity = '1', 1000 + stats.length * 400 + 1000);
     }
@@ -1799,21 +1875,24 @@
         grid.appendChild(card);
       });
       document.getElementById('store-ui').style.display = 'flex';
-      document.getElementById('store-ui').scrollTop = 0;
+      document.getElementById('store-scroll').scrollTop = 0;
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
     };
 
     window.closeStore = function() {
-      storeOpen = false; isPaused = false;
+      storeOpen = false;
       document.getElementById('store-ui').style.display = 'none';
+      // Check if mission requires buying rocket BEFORE resuming game
+      if (missionIndex === 2 && mission.state === 'BUY_WEAPON' && playerInventory.has('rocket')) {
+        triggerMissionSuccess(); // Sets isPaused = true, shows success screen
+        return; // Don't resume game - success screen handles transition
+      }
+      // Resume game normally
+      isPaused = false;
       if (isMobileDevice) {
         document.getElementById('mobile-controls').style.display = 'block';
       } else {
         renderer.domElement.requestPointerLock();
-      }
-      // Check if mission 3 requires buying rocket
-      if (missionIndex === 2 && mission.state === 'BUY_WEAPON' && playerInventory.has('rocket')) {
-        triggerMissionSuccess();
       }
       // Auto-equip rocket launcher for carpark mission even if not purchased
       if (missionIndex >= 3 && !playerInventory.has('rocket')) {
@@ -2218,6 +2297,10 @@
         if (mission.active && mission.state === 'BUILD_BARRICADE') {
           document.getElementById('objective-text').innerText = 'BUILD BARRICADE: ' + blocksPlacedForMission + '/20 blocks';
           if (blocksPlacedForMission >= 20) triggerMissionSuccess();
+        }
+        if (mission.active && mission.state === 'BUILD_MANSION') {
+          document.getElementById('objective-text').innerText = 'BUILD YOUR MANSION: ' + blocksPlacedForMission + '/40 blocks';
+          if (blocksPlacedForMission >= 40) triggerMissionSuccess();
         }
       }
     }
@@ -5100,7 +5183,11 @@
     }
 
     function gameOver() {
-      isPlaying = false; document.exitPointerLock();
+      // Don't show death screen if mission success is showing
+      if (mission.state === 'SUCCESS') return;
+      isPlaying = false; isPaused = true;
+      try { document.exitPointerLock(); } catch(e) {}
+      if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
       let restartMission = Math.max(0, missionIndex > 0 ? missionIndex - 1 : 0);
       // If current mission was in progress, restart it; if between missions restart last completed
       let restartIdx = mission.active ? missionIndex : restartMission;
@@ -5109,7 +5196,7 @@
         '<h1 style="color:red; font-size:64px; text-shadow:4px 4px #000; letter-spacing: 5px;">WASTED</h1>' +
         '<p style="font-size: 24px;">Score: $' + score + ' <br> Wanted: ' + wantedLevel + ' Stars</p>' +
         '<button class="play-btn" id="retry-btn">RETRY MISSION ' + (restartIdx + 1) + '</button>';
-      document.getElementById('retry-btn').onclick = () => {
+      let retryHandler = () => {
         document.getElementById('start-screen').style.display = 'none';
         // Reset player state
         playerHealth = maxHealth; armorHP = 0;
@@ -5118,11 +5205,14 @@
         if (currentVehicle) { currentVehicle = null; player.group.visible = true; }
         player.pos.set(0, 3, 0); player.vel.set(0, 0, 0);
         updateHUD();
+        isPaused = false;
         isPlaying = true;
         startMission(restartIdx);
-        let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
-        if (!isMobile) renderer.domElement.requestPointerLock();
+        if (!isMobileDevice) renderer.domElement.requestPointerLock();
+        if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
       };
+      document.getElementById('retry-btn').onclick = retryHandler;
+      document.getElementById('retry-btn').addEventListener('touchstart', (e) => { e.preventDefault(); retryHandler(); });
     }
 
     let lookTouchId = null, lastLookX = 0, lastLookY = 0;
@@ -5192,8 +5282,9 @@
       document.addEventListener('pointerlockchange', () => {
         if (document.pointerLockElement !== renderer.domElement) {
           // If browser loses pointer lock natively (via Escape), auto-pause
-          if (isPlaying && !isPaused && mission.state !== 'SUCCESS') {
-            togglePause(); 
+          // But not if store is open, success screen is showing, or game is paused
+          if (isPlaying && !isPaused && !storeOpen && mission.state !== 'SUCCESS') {
+            togglePause();
           }
         }
       });
@@ -5429,7 +5520,7 @@
       let distEl = document.getElementById('waypoint-dist');
       // Only show arrow when mission is active and phone has appeared (tutorial dismissed)
       let phoneShown = !pendingPhoneMessage && document.getElementById('tutorial-overlay').style.display === 'none';
-      let noArrowState = mission.state === 'SUCCESS' || mission.state === 'DONE' || (missionIndex === 3 && mission.state === 'DESTROY_CARS') || (missionIndex === 6 && (mission.state === 'CAUSE_CHAOS' || mission.state === 'STEAL_TANK')) || (missionIndex === 7 && (mission.state === 'COLLECT_BLOCKS' || mission.state === 'BUILD_BARRICADE'));
+      let noArrowState = mission.state === 'SUCCESS' || mission.state === 'DONE' || mission.state === 'LANDING_CINEMATIC' || (missionIndex === 3 && mission.state === 'DESTROY_CARS') || (missionIndex === 6 && (mission.state === 'CAUSE_CHAOS' || mission.state === 'STEAL_TANK')) || (missionIndex === 7 && (mission.state === 'COLLECT_BLOCKS' || mission.state === 'BUILD_BARRICADE')) || (missionIndex === 8 && mission.state === 'BUILD_MANSION');
       if (mission.active && !noArrowState && waypointArrow3D && phoneShown) {
         waypointArrow3D.visible = true;
         distEl.style.display = 'block';
@@ -5550,6 +5641,15 @@
         camera.position.set(Math.cos(time * 0.15) * spinR, spinH, Math.sin(time * 0.15) * spinR);
         camera.lookAt(0, 5, 0);
       }
+      // Success screen cinematic camera (runs even when paused)
+      if (isPlaying && mission.state === 'SUCCESS') {
+        let spinDist = 8, spinSpeed = 0.5;
+        let time = Date.now() * 0.001;
+        let camX = player.pos.x + Math.cos(time * spinSpeed) * spinDist;
+        let camZ = player.pos.z + Math.sin(time * spinSpeed) * spinDist;
+        camera.position.set(camX, player.pos.y + 4, camZ);
+        camera.lookAt(player.pos.clone().add(new THREE.Vector3(0, 2, 0)));
+      }
       if (isPlaying && !isPaused) {
         skybox.position.copy(camera.position); drawMinimap();
         // Update dust particles to follow player
@@ -5598,17 +5698,8 @@
         if (wDef && wDef.auto) fireWeapon();
       }
 
-      // Handle Upgrade/Success Sequence Camera Animation
-      if (mission.state === 'SUCCESS') {
-          let spinDist = 8;
-          let spinSpeed = 0.5;
-          let time = Date.now() * 0.001;
-          let camX = player.pos.x + Math.cos(time * spinSpeed) * spinDist;
-          let camZ = player.pos.z + Math.sin(time * spinSpeed) * spinDist;
-          camera.position.set(camX, player.pos.y + 4, camZ);
-          camera.lookAt(player.pos.clone().add(new THREE.Vector3(0, 2, 0)));
-          return; // Pause player physics logic while scene is rotating
-      }
+      // Success state handled by animate() camera spin; skip game logic
+      if (mission.state === 'SUCCESS') return;
 
       let moveZ = (keys.forward ? -1 : 0) + (keys.backward ? 1 : 0) + touchMove.y;
       let moveX = (keys.left ? -1 : 0) + (keys.right ? 1 : 0) + touchMove.x;
@@ -5709,7 +5800,42 @@
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
-        if (islandDist < 6400) triggerMissionSuccess();
+        if (islandDist < 6400) {
+          mission.state = 'LANDING_CINEMATIC';
+          isPaused = true;
+          // Cinematic landing: smoothly descend plane to island
+          let landingTime = 0;
+          let startPos = currentVehicle.pos.clone();
+          let startY = currentVehicle.pos.y;
+          let landTarget = new THREE.Vector3(ISLAND_X, 8, ISLAND_Z);
+          let landingInterval = setInterval(() => {
+            landingTime += 0.02;
+            let t = Math.min(1, landingTime);
+            let ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
+            currentVehicle.pos.lerpVectors(startPos, landTarget, ease);
+            currentVehicle.pos.y = startY + (8 - startY) * ease;
+            // Camera orbits around the landing
+            let camAngle = landingTime * 0.8;
+            let camDist = 25 - t * 10;
+            camera.position.set(
+              currentVehicle.pos.x + Math.cos(camAngle) * camDist,
+              currentVehicle.pos.y + 8 + (1 - t) * 15,
+              currentVehicle.pos.z + Math.sin(camAngle) * camDist
+            );
+            camera.lookAt(currentVehicle.pos);
+            if (composer) composer.render(); else renderer.render(scene, camera);
+            if (t >= 1) {
+              clearInterval(landingInterval);
+              // Exit vehicle
+              player.pos.copy(currentVehicle.pos).add(new THREE.Vector3(3, 0, 0));
+              player.pos.y = 9;
+              player.group.visible = true;
+              currentVehicle = null;
+              // Small delay then show success
+              setTimeout(() => triggerMissionSuccess(), 800);
+            }
+          }, 33);
+        }
       }
       // Mission 7: Tank Heist phases
       if (mission.active && missionIndex === 6) {
@@ -5748,6 +5874,23 @@
           mission.state = 'BUILD_BARRICADE';
           document.getElementById('objective-text').innerText = 'BUILD BARRICADE: 0/20 blocks';
           showPhoneMessage("Boss: You've got enough blocks! Now build that barricade across the road. Right-click to place blocks!", 15000);
+        }
+      }
+
+      // Mission 9: Build Your Home
+      if (mission.active && missionIndex === 8) {
+        if (mission.state === 'GO_TO_ISLAND_BUILD' && !currentVehicle && pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z)) < 10000) {
+          mission.state = 'BUILD_MANSION';
+          blocksPlacedForMission = 0;
+          document.getElementById('objective-text').innerText = 'BUILD YOUR MANSION: 0/40 blocks';
+          showPhoneMessage("Boss: Welcome home! Use " + (isMobileDevice ? "the Build button" : "SHIFT for build mode, E/F to pick blocks, right-click to place") + ". Build yourself something legendary!", 20000);
+          // Give blocks for building
+          if (totalBlocks < 40) {
+            let buildTypes = [TYPES.BRICK, TYPES.CONCRETE, TYPES.STEEL, TYPES.WOOD, TYPES.GLASS];
+            for (let bt of buildTypes) { blockInventory[bt] = (blockInventory[bt] || 0) + 20; totalBlocks += 20; }
+            updateBlockCounter(); updateHotbar();
+            showFloatingText('+100 building blocks!', player.pos);
+          }
         }
       }
 
