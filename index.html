@@ -616,6 +616,8 @@
       #action-msg {
         font-size: 14px !important;
       }
+      #start-controls-desktop { display: none !important; }
+      #start-controls-mobile { display: block !important; }
     }
     .phone-dismiss {
       font-size: 11px; color: #888; text-align: center; margin-top: 8px; cursor: pointer;
@@ -755,7 +757,7 @@
       </div>
       <div>
         <div style="text-align: right; margin-bottom: 5px;">
-          <button id="pause-btn" onclick="togglePause()" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">[P] PAUSE / [ESC]</button>
+          <button id="swap-btn" onclick="cycleWeapon()" style="display:none; background: rgba(255,180,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Swap</button><button id="pause-btn" onclick="togglePause()" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">[P] PAUSE / [ESC]</button>
         </div>
         <div id="wanted-level" class="stars"><span id="s1">★</span><span id="s2">★</span><span id="s3">★</span><span id="s4">★</span><span id="s5">★</span></div>
         <div id="objective-text">MISSION 1: ROB THE BANK</div>
@@ -780,7 +782,7 @@
       <div class="t-row"><span class="tutorial-text">Click: Shoot (on foot) / NOS Boost (in vehicle)</span></div>
       <div class="t-row"><span class="kbd" style="padding: 6px 30px;">SPACE</span><span class="tutorial-text">Jump (on foot & in vehicle) / Climb (Plane)</span></div>
       <div class="t-row"><span class="kbd" style="padding: 6px 14px;">Enter</span><span class="tutorial-text">Enter Vehicles & Planes / Rob Bank</span></div>
-      <div class="t-row"><span class="kbd">B</span><span class="tutorial-text">Build Mode / 1-9 Select Block / Right-Click Place</span></div>
+      <div class="t-row"><span class="kbd" style="padding: 6px 10px;">Shift</span><span class="tutorial-text">Swap Weapon / Build Mode / Right-Click Place</span></div>
     </div>
   </div>
 
@@ -810,13 +812,13 @@
 
   <div id="start-screen">
     <h1 style="font-size: 54px; color: gold; text-shadow: 5px 5px 0 #000, -2px -2px 0 #b8860b; margin: 0; letter-spacing: 2px;">JEE TEE AYY SIX</h1>
-    <div id="start-controls-desktop" style="margin-top: 24px; display: flex; flex-direction: column; gap: 10px; align-items: center;">
+    <div id="start-controls-desktop" style="margin-top: 24px; display: flex; flex-direction: column; gap: 20px; align-items: center;">
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">W</span><span class="kbd" style="font-size:18px; padding:6px 12px;">A</span><span class="kbd" style="font-size:18px; padding:6px 12px;">S</span><span class="kbd" style="font-size:18px; padding:6px 12px;">D</span><span style="color:#ccc; font-size:18px; margin-left:6px;">Move / Drive</span></div>
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Mouse</span><span style="color:#888; font-size:18px;">Look & Aim</span></div>
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Click</span><span style="color:#888; font-size:18px;">Shoot / NOS Boost</span></div>
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Space</span><span style="color:#888; font-size:18px;">Jump / Fly</span></div>
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Enter</span><span style="color:#888; font-size:18px;">Drive / Interact</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">B</span><span style="color:#888; font-size:18px;">Build Mode</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Shift</span><span style="color:#888; font-size:18px;">Swap Weapon / Build</span></div>
     </div>
     <div id="start-controls-mobile" style="margin-top: 24px; display: none; text-align: center; font-size: 20px; line-height: 2.2; color: #ccc;">
       <div>🕹️ Left stick to move</div>
@@ -1192,6 +1194,18 @@
     let playerInventory = new Set();
     let currentWeapon = 'pistol';
     let storeOpen = false;
+    // Weapon cycling system: Shift toggles between weapons and block mode
+    let playerWeapons = [
+      { id: 'pistol', name: 'Pistol', projSpeed: 200, projSize: 0.35, projColor: 0xffff00, fireRate: 200, auto: false }
+    ];
+    let weaponIndex = 0; // Index into playerWeapons, -1 = block mode
+    let lastFireTime = 0;
+    const WEAPON_DEFS = {
+      pistol:  { id: 'pistol', name: 'Pistol', projSpeed: 200, projSize: 0.35, projColor: 0xffff00, fireRate: 200, auto: false },
+      cop_pistol: { id: 'cop_pistol', name: 'Cop Pistol', projSpeed: 220, projSize: 0.3, projColor: 0x00aaff, fireRate: 180, auto: false },
+      army_rifle: { id: 'army_rifle', name: 'Army Rifle', projSpeed: 300, projSize: 0.4, projColor: 0xff3300, fireRate: 80, auto: true },
+      rocket:  { id: 'rocket', name: 'Rocket Launcher', projSpeed: 120, projSize: 0.6, projColor: 0xff4400, fireRate: 500, auto: false, isRocket: true }
+    };
 
     // --- Multi-Mission System ---
     const STORE_POS = new THREE.Vector3(-73, 1, 21);
@@ -1227,16 +1241,16 @@
           { icon: '💰', text: '+$10,000 Destruction Pay', action: 'cash10k' },
           { icon: '💥', text: 'Car Crusher!', action: 'car_crusher' }
         ]},
-      { id: 4, name: 'DEMOLITION', objective: 'MISSION 5: DESTROY THE CARPARK',
+      { id: 4, name: 'DEMOLITION', objective: 'MISSION 5: DESTROY THE CAR PARK',
         target: [216, 1, -24], reward: 15000,
-        phoneStart: "Boss: See that multi-story carpark? Level the whole building with your rocket launcher. Blow out at least half the blocks!",
+        phoneStart: "Boss: See that multi-story car park downtown? Head over there and destroy at least 10% of the blocks. Use your rocket launcher to blow it apart piece by piece!",
         rewards: [
           { icon: '💰', text: '+$15,000 Destruction Pay', action: 'cash15k' },
           { icon: '💥', text: 'Demolition Expert!', action: 'explosion_expert' }
         ]},
       { id: 5, name: 'FINAL HEIST', objective: 'MISSION 6: STEAL A PLANE',
         target: [AIRPORT_X, 1, AIRPORT_Z + 9], reward: 25000,
-        phoneStart: "Boss: Final job. Get to the airport and steal a plane. Fly it to the island - that's your new hideout. Make me proud, kid.",
+        phoneStart: "Boss: Final job. Get to the airport and steal one of the jumbo jets. Fly it to my private island — that's your new hideout. Follow the marker!",
         rewards: [
           { icon: '💰', text: '+$25,000 Final Payout!', action: 'cash25k' },
           { icon: '✈️', text: 'Master Criminal!', action: 'master' },
@@ -1352,6 +1366,8 @@
       setTimeout(() => { phone.style.display = 'none'; }, 700);
     }
 
+    window.debugTeleport = function(x, y, z) { player.pos.set(x, y, z); };
+    window.debugMission = function(idx) { missionIndex = idx; startMission(idx); };
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
       if (storeOpen) { closeStore(); return; }
@@ -1486,14 +1502,14 @@
     }
 
     function applyWeaponVisual(weaponId) {
-      if (!player || !player.gun) return;
-      if (weaponId === 'rocket') {
-        player.gun.children[0].geometry.dispose();
-        player.gun.children[0].geometry = new THREE.BoxGeometry(0.35, 0.5, 2.0);
-        player.gun.children[0].material.color.setHex(0x222222);
-        if (player.gun.children.length > 1) player.gun.children[1].material.color.setHex(0xff4400);
-        player.projSpeed = 120; player.projSize = 0.6; player.projColor = 0xff4400;
+      addWeapon(weaponId);
+      currentWeapon = weaponId;
+      weaponIndex = playerWeapons.findIndex(w => w.id === weaponId);
+      if (weaponIndex >= 0) {
+        let w = playerWeapons[weaponIndex];
+        player.projSpeed = w.projSpeed; player.projSize = w.projSize; player.projColor = w.projColor;
       }
+      applyWeaponVisualForType(weaponId);
     }
 
     function triggerMissionSuccess() {
@@ -1537,6 +1553,79 @@
       setTimeout(() => btn.style.opacity = '1', 1000 + m.rewards.length * 1000 + 500);
     }
 
+    let gameWon = false;
+    function showVictoryScreen() {
+      if (gameWon) return;
+      gameWon = true;
+      isPaused = true;
+      document.exitPointerLock();
+      if (waypointArrow3D) waypointArrow3D.visible = false;
+      let container = document.getElementById('mission-success');
+      container.innerHTML = '';
+      container.style.display = 'flex'; container.style.flexDirection = 'column';
+      container.style.alignItems = 'center'; container.style.justifyContent = 'center';
+      // Title
+      let title = document.createElement('div');
+      title.className = 'ms-title';
+      title.innerText = 'YOU WIN!';
+      title.style.transform = 'scale(0)'; title.style.fontSize = '80px';
+      container.appendChild(title);
+      setTimeout(() => title.style.transform = 'scale(1)', 100);
+      // Subtitle
+      let sub = document.createElement('div');
+      sub.style.cssText = 'font-size:24px; color:#aaa; margin-bottom:30px; opacity:0; transition:opacity 0.5s;';
+      sub.innerText = 'You made it to the private island!';
+      container.appendChild(sub);
+      setTimeout(() => sub.style.opacity = '1', 600);
+      // Stats
+      let stats = [
+        { label: 'Cash Earned', value: '$' + score },
+        { label: 'Missions Completed', value: missionIndex + '/' + MISSIONS.length },
+        { label: 'Wanted Level Reached', value: '★'.repeat(Math.max(wantedLevel, 1)) },
+        { label: 'Weapons Collected', value: playerWeapons.length + '' },
+        { label: 'Blocks Collected', value: totalBlocks + '' }
+      ];
+      stats.forEach((s, i) => {
+        let item = document.createElement('div');
+        item.className = 'ms-item';
+        item.innerHTML = '<span style="color:#ffcc00; min-width:220px;">' + s.label + '</span><span>' + s.value + '</span>';
+        container.appendChild(item);
+        setTimeout(() => { item.style.opacity = '1'; item.style.transform = 'translateY(0)'; }, 1000 + i * 400);
+      });
+      // Unfinished missions
+      let unfinished = MISSIONS.filter((m, i) => i >= missionIndex);
+      if (unfinished.length > 0) {
+        let ufDiv = document.createElement('div');
+        ufDiv.style.cssText = 'margin-top:20px; opacity:0; transition:opacity 0.5s; text-align:center;';
+        ufDiv.innerHTML = '<div style="color:#ff8800; font-size:18px; margin-bottom:8px;">Missions Remaining:</div>' +
+          unfinished.map(m => '<div style="color:#888; font-size:16px;">' + m.objective + '</div>').join('');
+        container.appendChild(ufDiv);
+        setTimeout(() => ufDiv.style.opacity = '1', 1000 + stats.length * 400 + 200);
+      }
+      // Unpurchased store items
+      let unbought = STORE_ITEMS.filter(it => !playerInventory.has(it.id) && it.type !== 'consumable' && it.id !== 'grenade');
+      if (unbought.length > 0) {
+        let ubDiv = document.createElement('div');
+        ubDiv.style.cssText = 'margin-top:15px; opacity:0; transition:opacity 0.5s; text-align:center;';
+        ubDiv.innerHTML = '<div style="color:#ff8800; font-size:18px; margin-bottom:8px;">Items Not Purchased:</div>' +
+          unbought.map(it => '<div style="color:#888; font-size:14px;">' + it.icon + ' ' + it.name + ' — $' + it.price + '</div>').join('');
+        container.appendChild(ubDiv);
+        setTimeout(() => ubDiv.style.opacity = '1', 1000 + stats.length * 400 + 600);
+      }
+      // Continue playing button
+      let btn = document.createElement('button');
+      btn.className = 'ms-btn';
+      btn.innerText = 'KEEP PLAYING';
+      btn.style.pointerEvents = 'auto';
+      btn.onclick = () => {
+        container.style.display = 'none';
+        isPaused = false;
+        renderer.domElement.requestPointerLock();
+      };
+      container.appendChild(btn);
+      setTimeout(() => btn.style.opacity = '1', 1000 + stats.length * 400 + 1000);
+    }
+
     // --- Store System ---
     window.openStore = function() {
       storeOpen = true; isPaused = true;
@@ -1565,6 +1654,12 @@
       // Check if mission 3 requires buying rocket
       if (missionIndex === 2 && mission.state === 'BUY_WEAPON' && playerInventory.has('rocket')) {
         triggerMissionSuccess();
+      }
+      // Auto-equip rocket launcher for carpark mission even if not purchased
+      if (missionIndex >= 3 && !playerInventory.has('rocket')) {
+        playerInventory.add('rocket');
+        applyWeaponVisual('rocket');
+        showFloatingText('+Rocket Launcher (Free)', player.pos);
       }
     };
 
@@ -1668,10 +1763,15 @@
 
     // --- Block Building System ---
     function addBlockToInventory(blockType) {
-      if (!BLOCK_NAMES[blockType]) return;
+      if (!blockType || blockType === TYPES.EMPTY || blockType === TYPES.WATER) return;
       if (!blockInventory[blockType]) blockInventory[blockType] = 0;
       blockInventory[blockType]++;
       totalBlocks++;
+      // Add to hotbar if not already there
+      if (!hotbarSlots.includes(blockType)) {
+        let emptySlot = hotbarSlots.findIndex(s => !(blockInventory[s] > 0));
+        if (emptySlot >= 0) hotbarSlots[emptySlot] = blockType;
+      }
       showFloatingText('+1 ' + (BLOCK_NAMES[blockType] || 'Block'), player.pos);
       playSFX('pickup');
       updateBlockCounter();
@@ -1683,7 +1783,7 @@
         el.style.display = 'block';
         let selName = BLOCK_NAMES[selectedBlockType] || 'Block';
         let selCount = blockInventory[selectedBlockType] || 0;
-        el.innerHTML = '🧱 ' + totalBlocks + ' | ' + selName + ': ' + selCount + (buildMode ? ' <span style="color:#ffcc00">[BUILD]</span>' : ' <span style="color:#888">[B]</span>');
+        el.innerHTML = '🧱 ' + totalBlocks + ' | ' + selName + ': ' + selCount + (buildMode ? ' <span style="color:#ffcc00">[BUILD]</span>' : ' <span style="color:#888">[SHIFT]</span>');
         el.style.borderColor = buildMode ? '#ffcc00' : '#888';
       } else {
         el.style.display = 'none';
@@ -1692,10 +1792,141 @@
       updateHotbar();
     }
 
+    function cycleWeapon() {
+      // Cycle: weapon0 → weapon1 → ... → blocks → weapon0
+      let totalModes = playerWeapons.length + (totalBlocks > 0 ? 1 : 0);
+      if (totalModes <= 1 && totalBlocks <= 0) return; // Only 1 weapon, no blocks
+      if (weaponIndex === -1) {
+        // Currently in block mode, go to first weapon
+        weaponIndex = 0; buildMode = false;
+      } else {
+        weaponIndex++;
+        if (weaponIndex >= playerWeapons.length) {
+          if (totalBlocks > 0) {
+            weaponIndex = -1; buildMode = true;
+            // Auto-select first block type the player has
+            if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
+              for (let bt in blockInventory) {
+                if (blockInventory[bt] > 0) { selectedBlockType = parseInt(bt); break; }
+              }
+            }
+          } else {
+            weaponIndex = 0;
+          }
+        } else {
+          buildMode = false;
+        }
+      }
+      if (weaponIndex >= 0) {
+        let w = playerWeapons[weaponIndex];
+        currentWeapon = w.id;
+        player.projSpeed = w.projSpeed;
+        player.projSize = w.projSize;
+        player.projColor = w.projColor;
+        applyWeaponVisualForType(w.id);
+        showFloatingText(w.name, player.pos);
+      } else {
+        showFloatingText('BUILD MODE', player.pos);
+      }
+      updateBlockCounter(); updateHotbar(); updateHUD();
+    }
+
+    function addWeapon(weaponId) {
+      if (playerWeapons.find(w => w.id === weaponId)) return; // Already have it
+      let def = WEAPON_DEFS[weaponId];
+      if (!def) return;
+      playerWeapons.push({...def});
+      showFloatingText('+' + def.name + '!', player.pos);
+    }
+
+    function applyWeaponVisualForType(weaponId) {
+      if (!player || !player.gun) return;
+      let barrel = player.gun.children[0];
+      let tip = player.gun.children[1];
+      if (weaponId === 'pistol') {
+        barrel.geometry.dispose(); barrel.geometry = new THREE.BoxGeometry(0.15, 0.2, 0.9);
+        barrel.material.color.setHex(0x444444);
+        tip.material.color.setHex(0xffff00);
+        player.gun.position.set(0.55, 1.15, -0.5);
+        player.gun.scale.setScalar(1);
+      } else if (weaponId === 'cop_pistol') {
+        barrel.geometry.dispose(); barrel.geometry = new THREE.BoxGeometry(0.18, 0.22, 1.1);
+        barrel.material.color.setHex(0x222233);
+        tip.material.color.setHex(0x00aaff);
+        player.gun.position.set(0.55, 1.15, -0.5);
+        player.gun.scale.setScalar(1.1);
+      } else if (weaponId === 'army_rifle') {
+        barrel.geometry.dispose(); barrel.geometry = new THREE.BoxGeometry(0.2, 0.25, 1.8);
+        barrel.material.color.setHex(0x2a2a1a);
+        tip.material.color.setHex(0xff3300);
+        player.gun.position.set(0.55, 1.2, -0.6);
+        player.gun.scale.setScalar(1.3);
+      } else if (weaponId === 'rocket') {
+        barrel.geometry.dispose(); barrel.geometry = new THREE.BoxGeometry(0.35, 0.5, 2.0);
+        barrel.material.color.setHex(0x222222);
+        tip.material.color.setHex(0xff4400);
+        player.gun.position.set(0.6, 1.3, -0.8);
+        player.gun.scale.setScalar(1);
+      }
+    }
+
+    let weaponPickups = [];
+    function spawnWeaponPickup(x, y, z, weaponId) {
+      if (weaponPickups.length > 30) return;
+      let def = WEAPON_DEFS[weaponId];
+      if (!def) return;
+      let size = weaponId === 'army_rifle' ? 0.6 : 0.4;
+      let color = def.projColor;
+      let mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(size * 0.4, size * 0.3, size * 1.5),
+        new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.6 })
+      );
+      mesh.position.set(x, y + 1, z);
+      scene.add(mesh);
+      weaponPickups.push({ mesh, weaponId, life: 45, pos: new THREE.Vector3(x, y + 1, z), vel: new THREE.Vector3((Math.random()-0.5)*2, 4, (Math.random()-0.5)*2) });
+    }
+
+    function updateWeaponPickups(dt) {
+      let collectPos = currentVehicle ? currentVehicle.pos : player.pos;
+      for (let i = weaponPickups.length - 1; i >= 0; i--) {
+        let wp = weaponPickups[i];
+        wp.life -= dt;
+        wp.mesh.rotation.y += dt * 2;
+        if (wp.vel) {
+          wp.vel.y -= 15 * dt;
+          wp.pos.add(wp.vel.clone().multiplyScalar(dt));
+          if (wp.pos.y < 1.5) { wp.pos.y = 1.5; wp.vel.y = Math.abs(wp.vel.y) * 0.2; wp.vel.x *= 0.4; wp.vel.z *= 0.4; }
+          if (Math.abs(wp.vel.y) < 0.1 && wp.pos.y <= 1.6) wp.vel = null;
+        }
+        if (!wp.vel) wp.mesh.position.y = wp.pos.y + Math.sin(wp.life * 2) * 0.2;
+        else wp.mesh.position.copy(wp.pos);
+        // Magnetic pull
+        let distSq = wp.pos.distanceToSquared(collectPos);
+        if (distSq < 25 && distSq > 4) {
+          let pull = collectPos.clone().sub(wp.pos).normalize().multiplyScalar(dt * 6);
+          wp.pos.add(pull); wp.mesh.position.copy(wp.pos);
+        }
+        if (distSq < 4) {
+          addWeapon(wp.weaponId);
+          scene.remove(wp.mesh);
+          weaponPickups.splice(i, 1);
+          continue;
+        }
+        wp.mesh.material.emissiveIntensity = 0.3 + Math.sin(wp.life * 4) * 0.4;
+        if (wp.life <= 0) { scene.remove(wp.mesh); weaponPickups.splice(i, 1); }
+      }
+    }
+
     function spawnBlockPickup(x, y, z, blockType) {
-      if (!BLOCK_NAMES[blockType]) return;
-      if (blockPickups.length > 150) return;
-      let color = parseInt((BLOCK_COLORS[blockType] || '#888').replace('#', ''), 16);
+      if (!blockType || blockType === TYPES.EMPTY || blockType === TYPES.WATER) return;
+      if (blockPickups.length > 200) return;
+      let colorHex = BLOCK_COLORS[blockType];
+      let color = colorHex ? parseInt(colorHex.replace('#', ''), 16) : 0x888888;
+      // Try to get color from material if available
+      if (!colorHex && MATERIALS[blockType]) {
+        let mat = MATERIALS[blockType];
+        if (mat.color) color = mat.color.getHex();
+      }
       let mesh = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.5 }));
       mesh.position.set(x, y + 0.5, z);
       scene.add(mesh);
@@ -2212,10 +2443,12 @@
             for (let z = 0; z < d; z++) {
               let isValid = false, bColor = color;
               let isWheel = (y < 2) && (x < 1 || x > w - 2) && ((z > 2 && z < 6) || (z > d - 7 && z < d - 3));
+              let isUnderbody = (y === 0) && (x >= 1 && x <= w - 2) && (z >= 1 && z < d - 1);
               let isChassis = (y >= 1 && y < 3) && (x >= 0 && x < w) && (z >= 0 && z < d);
-              let isCabin = (y >= 3 && y < 5) && (x > 0 && x < w - 1) && (z > 5 && z < d - 4);
-              let isRoof = (y === 5) && (x > 1 && x < w - 2) && (z > 6 && z < d - 5);
-              if (isWheel) { isValid = true; bColor = 0x111111; } 
+              let isCabin = (y >= 3 && y < 5) && (x > 0 && x < w - 1) && (z > 4 && z < d - 3);
+              let isRoof = (y === 5) && (x > 1 && x < w - 2) && (z > 5 && z < d - 4);
+              if (isWheel) { isValid = true; bColor = 0x111111; }
+              else if (isUnderbody) { isValid = true; bColor = 0x222222; }
               else if (isChassis) {
                 isValid = true;
                 if ((x === 0 || x === w - 1) && ((z > 1 && z < 7) || (z > d - 8 && z < d - 2))) isValid = false;
@@ -2223,20 +2456,21 @@
                 if (y === 2 && z === d - 1 && (x === 1 || x === w - 2)) bColor = 0xff0000;
               } else if (isCabin) {
                 isValid = true;
-                if (x === 1 || x === w - 2 || z === 6 || z === d - 5) bColor = 0x222222;
+                if (x === 1 || x === w - 2 || z === 5 || z === d - 4) bColor = 0x556688;
               } else if (isRoof) { isValid = true; }
 
               if ((type === 'COP_CAR' || type === 'ARMY_CAR') && isValid) {
-                if (isChassis || isRoof || isCabin) {
+                if (isChassis || isRoof || isCabin || isUnderbody) {
                   if (type === 'ARMY_CAR') {
-                    if (bColor !== 0x222222 && bColor !== 0xffffaa && bColor !== 0xff0000) bColor = 0x3b4d2e;
+                    if (bColor !== 0x556688 && bColor !== 0xffffaa && bColor !== 0xff0000 && bColor !== 0x111111) bColor = 0x3b4d2e;
                   } else {
-                    // Classic black & white cop car: white doors/body, black hood/trunk
+                    // Classic black & white cop car
                     let isWhiteDoor = (z > 4 && z < d - 4);
-                    if (bColor === 0x222222) {} // Keep window tint
+                    if (bColor === 0x556688) {} // Keep window tint
                     else if (bColor === 0xffffaa || bColor === 0xff0000) {} // Keep lights
+                    else if (bColor === 0x111111 || bColor === 0x222222) {} // Keep wheel/underbody
                     else if (isWhiteDoor) bColor = 0xffffff;
-                    else bColor = 0x2a2a5e; // Dark navy for hood/trunk
+                    else bColor = 0x1a1a3e; // Dark navy for hood/trunk
                     // Gold badge stripe
                     if ((z === 4 || z === d - 4) && y >= 1 && y <= 3) bColor = 0xccaa00;
                   }
@@ -2269,6 +2503,22 @@
         if (hits > 0) this.mesh.instanceMatrix.needsUpdate = true;
         return hits;
       }
+      darkenByDamage(healthRatio) {
+        // Progressively darken car as it takes damage: 1.0 = full health, 0 = dead
+        let darkFactor = Math.max(0.15, healthRatio);
+        let c = new THREE.Color();
+        for (let b of this.blocks) {
+          if (!b.active) continue;
+          c.setHex(b.color);
+          c.multiplyScalar(darkFactor);
+          // Add soot/burn tint at low health
+          if (healthRatio < 0.4) {
+            c.r = Math.min(c.r + 0.05, 0.3);
+          }
+          this.mesh.setColorAt(b.id, c);
+        }
+        this.mesh.instanceColor.needsUpdate = true;
+      }
       destroyCompletely() {
         let c = new THREE.Color(0x111111);
         for (let i = 0; i < this.mesh.count; i++) this.mesh.setColorAt(i, c);
@@ -2279,46 +2529,78 @@
     class VoxelPlane {
       constructor(color) {
         this.group = new THREE.Group(); this.blocks = [];
-        let blockSize = 0.25;
-        // Fuselage: 6w x 5h x 24d, Wings: 20w x 1h x 8d, Tail: 10w x 4h x 3d
-        let maxBlocks = 6*5*24 + 20*1*8 + 10*4*3;
+        color = 0xf0f0f0; // Always white planes
+        let blockSize = 0.5;
+        // Jumbo jet: Fuselage 8w x 8h x 40d, Wings 36w x 2h x 12d, Tail, Engines
+        let fw = 8, fh = 8, fd = 40;
+        let maxBlocks = fw*fh*fd + 36*2*12 + 4*8*6 + 16*4*6 + 100;
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(blockSize, blockSize, blockSize),
-          new THREE.MeshStandardMaterial({ roughness: 0.3, metalness: 0.6 }), maxBlocks);
+          new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.7 }), maxBlocks);
         this.mesh.castShadow = true;
         let i = 0, m = new THREE.Matrix4(), c = new THREE.Color();
-        // Fuselage
-        for (let x = 0; x < 6; x++) for (let y = 0; y < 5; y++) for (let z = 0; z < 24; z++) {
-          let isSkin = x === 0 || x === 5 || y === 0 || y === 4 || z === 0 || z === 23;
-          let isNose = z < 3 && (x < 1 || x > 4 || y < 1 || y > 3);
-          let isCockpit = z < 6 && z > 1 && y === 4 && x > 0 && x < 5;
+        let halfW = fw / 2, halfD = fd / 2;
+        // Fuselage (hollow tube)
+        for (let x = 0; x < fw; x++) for (let y = 0; y < fh; y++) for (let z = 0; z < fd; z++) {
+          let isSkin = x === 0 || x === fw-1 || y === 0 || y === fh-1 || z === 0 || z === fd-1;
+          // Rounded nose taper
+          let isNose = z < 4 && (x < 1 || x > fw-2 || y < 1 || y > fh-2);
+          let isNoseTip = z < 2 && (x < 2 || x > fw-3 || y < 2 || y > fh-3);
+          // Cockpit windows
+          let isCockpit = z < 8 && z > 2 && y === fh-1 && x > 1 && x < fw-2;
+          // Passenger windows - rows of small windows along sides
+          let isWindow = (x === 0 || x === fw-1) && y === fh-2 && z > 6 && z < fd-6 && z % 2 === 0;
+          if (isNoseTip) continue;
           if (isNose) continue;
           if (!isSkin && !isCockpit) continue;
-          let bColor = isCockpit ? 0x88ccff : color;
-          if (z === 0) bColor = 0x333333;
-          let lx = (x - 3) * blockSize, ly = y * blockSize, lz = (z - 12) * blockSize;
+          let bColor = color;
+          if (isCockpit) bColor = 0x88ccff;
+          else if (isWindow) bColor = 0x556688;
+          else if (z === 0 || z === 1) bColor = 0x444444;
+          else if (y === 0) bColor = 0xcccccc; // Belly lighter
+          // Stripe along fuselage
+          if ((x === 0 || x === fw-1) && (y === 3 || y === 4)) bColor = 0x2255aa;
+          let lx = (x - halfW + 0.5) * blockSize, ly = y * blockSize, lz = (z - halfD + 0.5) * blockSize;
           m.setPosition(lx, ly, lz); this.mesh.setMatrixAt(i, m);
           c.setHex(bColor); this.mesh.setColorAt(i, c);
           this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: bColor }); i++;
         }
-        // Wings (at z=8-16, y=2)
-        for (let x = -10; x <= 15; x++) for (let z = 8; z < 16; z++) {
-          if (x >= 0 && x < 6) continue; // skip fuselage area
-          let lx = (x - 3) * blockSize, ly = 2 * blockSize, lz = (z - 12) * blockSize;
+        // Wings (swept back, at mid-fuselage, y=2)
+        let wingZ0 = 14, wingZLen = 12;
+        for (let x = -18; x <= fw + 17; x++) for (let wy = 0; wy < 2; wy++) for (let z = wingZ0; z < wingZ0 + wingZLen; z++) {
+          if (x >= 0 && x < fw) continue; // skip fuselage
+          // Swept wing shape — taper toward tips
+          let dist = x < 0 ? -x : x - fw + 1;
+          let tipTaper = Math.max(0, wingZLen - Math.floor(dist * 0.4));
+          if (z - wingZ0 >= tipTaper) continue;
+          let lx = (x - halfW + 0.5) * blockSize, ly = (2 + wy) * blockSize, lz = (z - halfD + 0.5) * blockSize;
           m.setPosition(lx, ly, lz); this.mesh.setMatrixAt(i, m);
           c.setHex(color); this.mesh.setColorAt(i, c);
           this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: color }); i++;
         }
+        // Engines (2 under each wing)
+        let enginePositions = [-10, -5, fw + 4, fw + 9];
+        for (let ep of enginePositions) {
+          for (let ex = 0; ex < 3; ex++) for (let ey = 0; ey < 3; ey++) for (let ez = wingZ0; ez < wingZ0 + 6; ez++) {
+            let isSkin = ex === 0 || ex === 2 || ey === 0 || ey === 2 || ez === wingZ0 || ez === wingZ0 + 5;
+            if (!isSkin) continue;
+            let lx = (ep + ex - halfW + 0.5) * blockSize, ly = ey * blockSize, lz = (ez - halfD + 0.5) * blockSize;
+            m.setPosition(lx, ly, lz); this.mesh.setMatrixAt(i, m);
+            c.setHex(0x555555); this.mesh.setColorAt(i, c);
+            this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: 0x555555 }); i++;
+          }
+        }
         // Tail fin (vertical)
-        for (let x = 2; x < 4; x++) for (let y = 5; y < 9; y++) for (let z = 20; z < 24; z++) {
-          let lx = (x - 3) * blockSize, ly = y * blockSize, lz = (z - 12) * blockSize;
+        for (let x = 3; x < 5; x++) for (let y = fh; y < fh + 8; y++) for (let z = fd - 6; z < fd; z++) {
+          let lx = (x - halfW + 0.5) * blockSize, ly = y * blockSize, lz = (z - halfD + 0.5) * blockSize;
           m.setPosition(lx, ly, lz); this.mesh.setMatrixAt(i, m);
-          c.setHex(0xcc0000); this.mesh.setColorAt(i, c);
-          this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: 0xcc0000 }); i++;
+          let tailColor = (y > fh + 4) ? 0xcc0000 : color;
+          c.setHex(tailColor); this.mesh.setColorAt(i, c);
+          this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: tailColor }); i++;
         }
         // Horizontal stabilizers
-        for (let x = -4; x <= 9; x++) for (let z = 21; z < 24; z++) {
-          if (x >= 0 && x < 6) continue;
-          let lx = (x - 3) * blockSize, ly = 4 * blockSize, lz = (z - 12) * blockSize;
+        for (let x = -6; x <= fw + 5; x++) for (let z = fd - 5; z < fd; z++) {
+          if (x >= 1 && x < fw - 1) continue;
+          let lx = (x - halfW + 0.5) * blockSize, ly = (fh - 1) * blockSize, lz = (z - halfD + 0.5) * blockSize;
           m.setPosition(lx, ly, lz); this.mesh.setMatrixAt(i, m);
           c.setHex(color); this.mesh.setColorAt(i, c);
           this.blocks.push({ id: i, pos: new THREE.Vector3(lx, ly, lz), active: true, color: color }); i++;
@@ -2607,7 +2889,7 @@
       let storeSE = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), ssm.clone());
       storeSE.position.set(-63.5, 8, 21); storeSE.rotation.y = Math.PI / 2; scene.add(storeSE); // East
 
-      // Carpark building sign
+      // Carpark building signs — all 4 sides
       let carparkSignCanvas = document.createElement('canvas');
       carparkSignCanvas.width = 512; carparkSignCanvas.height = 128;
       let cpctx = carparkSignCanvas.getContext('2d');
@@ -2616,10 +2898,19 @@
       cpctx.fillStyle = '#ff8800'; cpctx.font = 'bold 72px sans-serif'; cpctx.textAlign = 'center'; cpctx.textBaseline = 'middle';
       cpctx.fillText('CARPARK', 256, 64);
       let carparkSignTex = new THREE.CanvasTexture(carparkSignCanvas);
-      let carparkSignMesh = new THREE.Mesh(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshBasicMaterial({ map: carparkSignTex, side: THREE.DoubleSide }));
-      carparkSignMesh.position.set(CARPARK_POS.x, 20, CARPARK_POS.z - 11); // Front face of carpark (south-facing)
-      carparkSignMesh.rotation.y = Math.PI;
-      scene.add(carparkSignMesh);
+      let cpSignMat = new THREE.MeshBasicMaterial({ map: carparkSignTex, side: THREE.DoubleSide });
+      // South face
+      let cpSignS = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
+      cpSignS.position.set(CARPARK_POS.x, 22, CARPARK_POS.z - 13); scene.add(cpSignS);
+      // North face
+      let cpSignN = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
+      cpSignN.position.set(CARPARK_POS.x, 22, CARPARK_POS.z + 13); cpSignN.rotation.y = Math.PI; scene.add(cpSignN);
+      // West face
+      let cpSignW = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
+      cpSignW.position.set(CARPARK_POS.x - 13, 22, CARPARK_POS.z); cpSignW.rotation.y = Math.PI / 2; scene.add(cpSignW);
+      // East face
+      let cpSignE = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
+      cpSignE.position.set(CARPARK_POS.x + 13, 22, CARPARK_POS.z); cpSignE.rotation.y = -Math.PI / 2; scene.add(cpSignE);
 
       // Airport signs on all 4 sides of terminal
       let apSignCanvas = document.createElement('canvas');
@@ -2793,6 +3084,7 @@
         document.getElementById('mobile-controls').style.display = 'block';
         document.getElementById('mobile-help-btn').style.display = 'block';
         document.getElementById('pause-btn').innerText = 'Pause';
+        document.getElementById('swap-btn').style.display = 'inline-block';
         setupTouch();
       }
 
@@ -2957,7 +3249,7 @@
         if (isPerimeter) { buildingHeight = 40; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_DARK; }
         else if (isBank) { buildingHeight = 25; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_BLUE; }
         else if (isStore) { buildingHeight = 18; wallType = TYPES.BRICK_RED; glassType = TYPES.GLASS_BLUE; }
-        else if (isCarpark) { buildingHeight = 20; wallType = TYPES.CONCRETE; }
+        else if (isCarpark) { buildingHeight = 30; wallType = TYPES.CONCRETE; }
         else if (isAlley) { buildingHeight = 0; } // Open alley/safe zone
         else if (zone === 'DOWNTOWN') {
           buildingHeight = 30 + Math.floor(h * 35);
@@ -2966,9 +3258,24 @@
         } else if (zone === 'URBAN') {
           buildingHeight = 12 + Math.floor(h * 20);
         } else if (zone === 'SUBURBAN') {
-          buildingHeight = h > 0.3 ? 3 + Math.floor(h * 4) : 0;
+          let subType = hash2D(this.cx * 13, this.cz * 17);
+          if (subType > 0.95) {
+            // Mansion — tall, large
+            buildingHeight = 10 + Math.floor(h * 5);
+            wallType = TYPES.PLASTER_LIGHT; glassType = TYPES.GLASS_BLUE;
+          } else if (subType > 0.88) {
+            // School/Hospital
+            buildingHeight = 8 + Math.floor(h * 4);
+            wallType = subType > 0.915 ? TYPES.BRICK_RED : TYPES.CONCRETE;
+          } else if (subType > 0.78) {
+            // Farm — low barn
+            buildingHeight = h > 0.2 ? 4 + Math.floor(h * 2) : 0;
+            wallType = TYPES.WOOD; glassType = TYPES.GLASS;
+          } else {
+            buildingHeight = h > 0.3 ? 3 + Math.floor(h * 4) : 0;
+          }
           let houseColors = [TYPES.PLASTER_LIGHT, TYPES.PLASTER_WARM, TYPES.BRICK_RED, TYPES.BRICK, TYPES.BRICK_BROWN, TYPES.CONCRETE];
-          wallType = houseColors[Math.floor(h * 100) % houseColors.length];
+          if (subType <= 0.78) wallType = houseColors[Math.floor(h * 100) % houseColors.length];
         } else if (zone === 'RURAL') {
           buildingHeight = h > 0.7 ? 4 + Math.floor(h * 3) : 0; // Sparse farmhouses/barns
           wallType = h > 0.85 ? TYPES.BRICK_RED : TYPES.WOOD;
@@ -3053,7 +3360,7 @@
                 }
                 continue;
               }
-            } else if (zone === 'AIRPORT') {
+            } else if (zone === 'AIRPORT' || isCarpark) {
               isWater = false;
             } else {
               // River through city (sinusoidal path, north-south)
@@ -3177,7 +3484,7 @@
             } else {
               // Standard terrain
               // More green spaces - lower thresholds mean more parks/gardens
-              let isPark = (zone === 'RURAL' && noise > 0.25) || (zone === 'SUBURBAN' && noise > 0.45) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45);
+              let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.25) || (zone === 'SUBURBAN' && noise > 0.45) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
               if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
@@ -3242,6 +3549,8 @@
               let margin = ROAD_WIDTH + 1;
               let canBuild = (Math.abs(wx) % CHUNK_SIZE >= margin) && (Math.abs(wx) % CHUNK_SIZE <= CHUNK_SIZE - margin) &&
                              (Math.abs(wz) % CHUNK_SIZE >= margin) && (Math.abs(wz) % CHUNK_SIZE <= CHUNK_SIZE - margin);
+              // Carpark uses expanded footprint — override canBuild
+              if (isCarpark) canBuild = !isRoad;
 
               if (canBuild && buildingHeight > 0 && !isPark) {
                 // Building footprint - smaller for suburban
@@ -3262,6 +3571,7 @@
                 // Special buildings: bank gets larger footprint
                 if (isBank) { bWidth = maxFootprint; bDepth = maxFootprint; bStartX = margin; bStartZ = margin; }
                 if (isStore) { bWidth = Math.min(20, maxFootprint); bDepth = Math.min(16, maxFootprint); }
+                if (isCarpark) { bStartX = ROAD_WIDTH; bStartZ = ROAD_WIDTH; bWidth = CHUNK_SIZE - ROAD_WIDTH * 2; bDepth = CHUNK_SIZE - ROAD_WIDTH * 2; }
 
                 if (lx >= bStartX && lx < bStartX + bWidth && lz >= bStartZ && lz < bStartZ + bDepth) {
                   let isWall = (lx === bStartX || lx === bStartX + bWidth - 1) || (lz === bStartZ || lz === bStartZ + bDepth - 1);
@@ -3360,28 +3670,45 @@
 
                     // === CARPARK ===
                     if (isCarpark) {
-                      let floorLevels = [1, 6, 11, 16];
+                      let floorLevels = [1, 6, 11, 16, 21, 26];
                       let isFloorSlab = floorLevels.includes(y);
-                      let isPillar = ((lx === bStartX || lx === bStartX + bWidth - 1 || lx === midX) &&
-                                      (lz === bStartZ || lz === bStartZ + bDepth - 1 || lz === midZ));
-                      // Ramp: diagonal connector in one corner
-                      let rampX = bStartX + 2, rampEndX = bStartX + 5;
-                      let isRamp = (lx >= rampX && lx <= rampEndX && lz >= bStartZ + 1 && lz <= bStartZ + 3);
-                      let rampY = 1 + Math.floor((lz - bStartZ) * 1.0 + (y - 1) % 5);
-
+                      let relX = lx - bStartX, relZ = lz - bStartZ;
+                      // Pillars: grid of support columns every 4 blocks
+                      let isPillar = (relX % 4 === 0 && relZ % 4 === 0);
+                      // Outer walls: half-height barriers on each floor edge (open-air design)
+                      let isOuterEdge = (lx === bStartX || lx === bStartX + bWidth - 1 || lz === bStartZ || lz === bStartZ + bDepth - 1);
+                      let floorNum = Math.floor((y - 1) / 5);
+                      let localY = (y - 1) % 5;
+                      // Ramp: wider ramp in back-right corner, goes up 5 blocks over depth
+                      let rampX1 = bStartX + bWidth - 6, rampX2 = bStartX + bWidth - 2;
+                      let rampZ1 = bStartZ + 1, rampZ2 = bStartZ + bDepth - 2;
+                      let inRamp = (lx >= rampX1 && lx <= rampX2 && lz >= rampZ1 && lz <= rampZ2);
                       let placed = false;
                       if (isPillar) {
                         this.setBlock(lx, y, lz, TYPES.STEEL); placed = true;
-                      } else if (effectiveWall) {
-                        if (lx % 6 === 0 || lz % 6 === 0) { this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true; }
-                      } else if (isFloorSlab) {
+                      } else if (isOuterEdge) {
+                        // Half-walls: only first 2 blocks above each floor level
+                        if (localY === 0 || localY === 1) {
+                          this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true;
+                        }
+                        // Yellow stripe at floor level
+                        if (localY === 0 && y > 1) {
+                          this.setBlock(lx, y, lz, TYPES.YELLOW); placed = true;
+                        }
+                      } else if (isFloorSlab && !inRamp) {
                         this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true;
-                      } else if (isRamp && (y % 5 >= 1 && y % 5 <= 3)) {
-                        let rampLevel = Math.floor((y - 1) / 5);
-                        let ry = floorLevels[rampLevel] || 1;
-                        let rampProgress = (lz - bStartZ - 1) / 2.0;
-                        let rampBlockY = ry + Math.floor(rampProgress * 4);
-                        if (y === rampBlockY || y === rampBlockY + 1) { this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true; }
+                      } else if (y === buildingHeight) {
+                        // Roof slab
+                        this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true;
+                      } else if (inRamp) {
+                        // Ramp: gradual slope going up within each floor
+                        let rampProgress = (lz - rampZ1) / (rampZ2 - rampZ1);
+                        let baseFloor = floorLevels[floorNum] || 1;
+                        let nextFloor = floorLevels[floorNum + 1] || (baseFloor + 5);
+                        let rampBlockY = baseFloor + Math.floor(rampProgress * (nextFloor - baseFloor));
+                        if (y === rampBlockY) {
+                          this.setBlock(lx, y, lz, TYPES.CONCRETE); placed = true;
+                        }
                       }
                       if (placed) carparkTotalBlocks++;
                       continue;
@@ -3396,24 +3723,42 @@
                         this.setBlock(lx, y, lz, isWindow ? glassType : bType);
                       }
                     } else if (isFloor) {
-                      let isStairHole = (lx >= bStartX + 2 && lx <= bStartX + 4 && lz >= bStartZ + 2 && lz <= bStartZ + 6);
-                      if (!isStairHole) this.setBlock(lx, y, lz, TYPES.WOOD);
-                      if (!isStairHole && lx % 7 === 0 && lz % 7 === 0 && lx > bStartX + 2 && lx < bStartX + bWidth - 2) {
-                        this.setBlock(lx, y + 1, lz, TYPES.WOOD);
-                        this.setBlock(lx + 1, y + 1, lz, TYPES.WOOD);
-                        this.setBlock(lx - 1, y + 1, lz, TYPES.BRICK_BROWN);
-                        this.setBlock(lx + 2, y + 1, lz, TYPES.BRICK_BROWN);
+                      // Alternating staircase positions per floor
+                      let floorNum = Math.floor((y - 1) / 5);
+                      let stairW = 4, stairD = 6, holeW = 5, holeD = 7;
+                      let sx, sz;
+                      if (floorNum % 2 === 0) {
+                        sx = bStartX + 2; sz = bStartZ + 2;
+                      } else {
+                        sx = bStartX + bWidth - 2 - stairW; sz = bStartZ + bDepth - 2 - stairD;
                       }
-                      if (y > 1 && lx > bStartX + 6 && lx < bStartX + bWidth - 4 && lz > bStartZ + 6 && lz < bStartZ + bDepth - 4) {
-                        if (Math.random() < 0.02) { this.setBlock(lx, y + 1, lz, TYPES.WOOD); this.setBlock(lx, y + 2, lz, TYPES.WOOD); }
+                      let inHole = (lx >= sx - 1 && lx < sx + holeW && lz >= sz - 1 && lz < sz + holeD);
+                      if (!inHole) this.setBlock(lx, y, lz, TYPES.WOOD);
+                      // Interior furniture — desks/tables
+                      if (!inHole && lx % 7 === 0 && lz % 7 === 0 && lx > bStartX + 2 && lx < bStartX + bWidth - 2 && lz > bStartZ + 2 && lz < bStartZ + bDepth - 2) {
+                        this.setBlock(lx, y + 1, lz, TYPES.WOOD);
                       }
                     } else {
-                      // Staircase: wider (3 blocks) with solid fill underneath each step
-                      if (lx >= bStartX + 2 && lx <= bStartX + 4 && lz >= bStartZ + 2 && lz <= bStartZ + 6) {
+                      // Alternating staircase — goes up 1 block per Z step
+                      let floorNum = Math.floor((y - 1) / 5);
+                      let stairW = 4, stairD = 6;
+                      let sx, sz;
+                      if (floorNum % 2 === 0) {
+                        sx = bStartX + 2; sz = bStartZ + 2;
+                      } else {
+                        sx = bStartX + bWidth - 2 - stairW; sz = bStartZ + bDepth - 2 - stairD;
+                      }
+                      if (lx >= sx && lx < sx + stairW && lz >= sz && lz < sz + stairD) {
                         let localY = (y - 1) % 5;
-                        let expectedZ = bStartZ + 2 + localY;
-                        // Place step block at the correct Z for this Y level
-                        if (lz <= expectedZ) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        let stepZ;
+                        if (floorNum % 2 === 0) {
+                          stepZ = localY; // stairs go up along +Z
+                        } else {
+                          stepZ = stairD - 1 - localY; // stairs go up along -Z
+                        }
+                        if (lz - sz === stepZ) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        else if (lz - sz < stepZ && floorNum % 2 === 0) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        else if (lz - sz > stepZ && floorNum % 2 !== 0) this.setBlock(lx, y, lz, TYPES.STEEL);
                       }
                     }
                   }
@@ -3448,29 +3793,104 @@
                     for (let y = 1; y <= 5; y++) this.setBlock(lx, y, lz, TYPES.STEEL);
                     this.setBlock(lx, 6, lz, TYPES.LIGHT);
                   }
-                  // Suburban yards - grass front yards with fences and trees
+                  // Suburban yards - grass front yards with fences, trees, gardens, hills
                   if (zone === 'SUBURBAN' && !isSidewalk) {
-                    this.setBlock(lx, 0, lz, TYPES.GRASS);
+                    // Suburban terrain hills (gentle rolling)
+                    let subHill = Math.floor(smoothNoise(wx * 0.04, wz * 0.04) * 4);
+                    let subHill2 = Math.floor(smoothNoise(wx * 0.08 + 30, wz * 0.08 + 30) * 2);
+                    subHill = Math.max(0, subHill + subHill2);
+                    for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? TYPES.GRASS : TYPES.DIRT);
+                    if (subHill === 0) this.setBlock(lx, 0, lz, TYPES.GRASS);
+
+                    let subType = hash2D(this.cx * 13, this.cz * 17);
                     // Front yard fence along sidewalk edge
                     let nearSidewalk = (rxMod === ROAD_WIDTH + 2 || rxMod === CHUNK_SIZE - 3 || rzMod === ROAD_WIDTH + 2 || rzMod === CHUNK_SIZE - 3);
                     if (nearSidewalk && hash2D(wx * 7, wz * 7) > 0.4) {
-                      this.setBlock(lx, 1, lz, TYPES.WOOD);
+                      this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
                     }
-                    // Yard trees
-                    if (hash2D(wx + 10, wz + 10) > 0.985) {
-                      let th = 3 + Math.floor(hash2D(wx + 15, wz + 15) * 2);
-                      for (let y = 1; y <= th; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
-                      for (let ox = -1; ox <= 1; ox++) for (let oz = -1; oz <= 1; oz++) {
-                        if (lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
-                          this.setBlock(lx + ox, th, lz + oz, TYPES.LEAVES);
-                          this.setBlock(lx + ox, th + 1, lz + oz, TYPES.LEAVES);
+
+                    // Farm chunks: crops, hay bales, silos
+                    if (subType > 0.78 && subType <= 0.88) {
+                      // Crop rows
+                      if (lx > margin + 2 && lx < CHUNK_SIZE - margin - 2 && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2) {
+                        if (lx % 2 === 0 && hash2D(wx + 20, wz + 20) > 0.3) {
+                          this.setBlock(lx, subHill + 1, lz, TYPES.LEAVES); // crops
+                        }
+                        // Hay bales
+                        if (hash2D(wx * 5 + 1, wz * 5 + 1) > 0.995) {
+                          this.setBlock(lx, subHill + 1, lz, TYPES.YELLOW);
+                          this.setBlock(lx, subHill + 2, lz, TYPES.YELLOW);
+                        }
+                      }
+                      // Silo
+                      if (lx === margin + 4 && lz === margin + 4) {
+                        for (let sy = subHill + 1; sy <= subHill + 8; sy++) {
+                          for (let sox = -1; sox <= 1; sox++) for (let soz = -1; soz <= 1; soz++) {
+                            if (lx+sox >= 0 && lx+sox < CHUNK_SIZE && lz+soz >= 0 && lz+soz < CHUNK_SIZE)
+                              this.setBlock(lx+sox, sy, lz+soz, TYPES.STEEL);
+                          }
+                        }
+                        // Silo dome
+                        this.setBlock(lx, subHill + 9, lz, TYPES.STEEL);
+                      }
+                    }
+
+                    // School/Hospital chunks: playground, parking
+                    if (subType > 0.88 && subType <= 0.95) {
+                      let isSchool = subType <= 0.915;
+                      // Playground / parking area
+                      if (lx > margin + 8 && lx < CHUNK_SIZE - margin - 4 && lz > margin + 1 && lz < margin + 5) {
+                        this.setBlock(lx, subHill, lz, TYPES.CONCRETE); // paved area
+                        // Playground equipment / benches
+                        if (hash2D(wx * 9, wz * 9) > 0.96) {
+                          this.setBlock(lx, subHill + 1, lz, isSchool ? TYPES.RED : TYPES.BLUE);
+                          this.setBlock(lx, subHill + 2, lz, TYPES.STEEL);
+                        }
+                      }
+                      // Sign post
+                      if (lx === margin + 1 && lz === margin + 1) {
+                        for (let sy = subHill + 1; sy <= subHill + 3; sy++) this.setBlock(lx, sy, lz, TYPES.STEEL);
+                        this.setBlock(lx, subHill + 3, lz, isSchool ? TYPES.YELLOW : TYPES.RED);
+                      }
+                    }
+
+                    // Mansion chunks: gardens, pools
+                    if (subType > 0.95) {
+                      // Garden hedges
+                      if ((lx === margin + 3 || lx === CHUNK_SIZE - margin - 4) && lz > margin + 3 && lz < CHUNK_SIZE - margin - 3) {
+                        this.setBlock(lx, subHill + 1, lz, TYPES.LEAVES);
+                        this.setBlock(lx, subHill + 2, lz, TYPES.LEAVES);
+                      }
+                      // Pool
+                      if (lx > CHUNK_SIZE - margin - 10 && lx < CHUNK_SIZE - margin - 4 && lz > margin + 6 && lz < margin + 12) {
+                        this.setBlock(lx, subHill, lz, TYPES.WATER);
+                      }
+                    }
+
+                    // Varied yard trees (different sizes and types)
+                    if (hash2D(wx + 10, wz + 10) > 0.975) {
+                      let treeType = hash2D(wx + 50, wz + 50);
+                      let th = treeType > 0.5 ? (4 + Math.floor(hash2D(wx + 15, wz + 15) * 3)) : (2 + Math.floor(hash2D(wx + 15, wz + 15) * 2));
+                      for (let y = subHill + 1; y <= subHill + th; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
+                      let cr = treeType > 0.5 ? 2 : 1;
+                      for (let ox = -cr; ox <= cr; ox++) for (let oz = -cr; oz <= cr; oz++) {
+                        if (Math.abs(ox) + Math.abs(oz) <= cr + 1 && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
+                          this.setBlock(lx + ox, subHill + th, lz + oz, TYPES.LEAVES);
+                          this.setBlock(lx + ox, subHill + th + 1, lz + oz, TYPES.LEAVES);
                         }
                       }
                     }
-                    // Suburban lamp posts (shorter, less frequent)
+
+                    // Flower gardens (random colored blocks)
+                    if (hash2D(wx + 33, wz + 33) > 0.992) {
+                      let flowerColors = [TYPES.RED, TYPES.YELLOW, TYPES.BLUE];
+                      this.setBlock(lx, subHill + 1, lz, flowerColors[Math.floor(hash2D(wx + 44, wz + 44) * 3)]);
+                    }
+
+                    // Suburban lamp posts
                     if (lx === margin - 1 && lz % 24 === 0) {
-                      for (let y = 1; y <= 3; y++) this.setBlock(lx, y, lz, TYPES.STEEL);
-                      this.setBlock(lx, 4, lz, TYPES.LIGHT);
+                      for (let y = subHill + 1; y <= subHill + 3; y++) this.setBlock(lx, y, lz, TYPES.STEEL);
+                      this.setBlock(lx, subHill + 4, lz, TYPES.LIGHT);
                     }
                   }
                 }
@@ -3709,8 +4129,8 @@
         let type = chunk.destroyBlock(wx - (cx * CHUNK_SIZE), wy, wz - (cz * CHUNK_SIZE));
         if (type) {
           spawnPhysicsParticle(wx, wy, wz, type, velDir);
-          // Drop block pickup (30% chance per destroyed block)
-          if (isPlayerAction && Math.random() < 0.6) spawnBlockPickup(wx, wy, wz, type);
+          // Drop block pickup from every destroyed block
+          if (isPlayerAction) spawnBlockPickup(wx, wy, wz, type);
           if (isPlayerAction) {
             let pts = 10, ch = 2;
             if (type === TYPES.GLASS || type === TYPES.GLASS_BLUE || type === TYPES.GLASS_DARK) pts = 25;
@@ -3725,10 +4145,10 @@
             if (missionIndex === 4 && mission.state === 'DESTROY_CARPARK' && cx === 4 && cz === -1) {
               carparkBlocksDestroyed++;
               let pct = carparkTotalBlocks > 0 ? Math.floor((carparkBlocksDestroyed / carparkTotalBlocks) * 100) : 0;
-              document.getElementById('objective-text').innerText = 'DESTROY CARPARK: ' + pct + '%';
-              document.getElementById('demo-fill').style.height = Math.min(pct * 2, 100) + '%';
+              document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: ' + pct + '%';
+              document.getElementById('demo-fill').style.height = Math.min(pct * 10, 100) + '%';
               document.getElementById('demo-pct').innerText = pct + '%';
-              if (pct >= 50) triggerMissionSuccess();
+              if (pct >= 10) triggerMissionSuccess();
             }
           }
           return true;
@@ -3747,10 +4167,11 @@
 
     class Vehicle {
       constructor(type, x, z, color) {
-        this.type = type; this.pos = new THREE.Vector3(x, type === 'PLANE' ? 2.0 : (type === 'TANK' ? 2.0 : 1.5), z);
+        this.type = type; this.pos = new THREE.Vector3(x, type === 'PLANE' ? 4.0 : (type === 'TANK' ? 2.0 : 1.5), z);
         this.vel = new THREE.Vector3(); this.yaw = 0; this.planePitch = 0;
-        this.health = type === 'TANK' ? 1500 : (type === 'ARMY' ? 800 : (type === 'COP' ? 600 : (type === 'PLANE' ? 500 : 100)));
+        this.health = type === 'TANK' ? 1500 : (type === 'ARMY' ? 800 : (type === 'COP' ? 600 : (type === 'PLANE' ? 500 : 500)));
         this.maxHealth = this.health;
+        this.collisionHits = 0; // Track collision impacts for visual damage
         this.isDead = false; this.nos = 100; this.isFlying = false; this.parked = false;
         this.ramHits = 0; this.burning = false; this.lastRam = 0; this.driftAngle = 0;
         this.turretYaw = 0; this.lastTankShot = 0;
@@ -3955,19 +4376,22 @@
             let relSpeed = Math.sqrt((this.vel.x - other.vel.x) ** 2 + (this.vel.z - other.vel.z) ** 2);
             if (relSpeed > 3) {
               // Bounce velocities
-              let thisSpeed = Math.sqrt(this.vel.x ** 2 + this.vel.z ** 2);
-              let otherSpeed = Math.sqrt(other.vel.x ** 2 + other.vel.z ** 2);
               this.vel.add(pushDir.clone().multiplyScalar(relSpeed * 0.3));
               other.vel.add(pushDir.clone().multiplyScalar(-relSpeed * 0.3));
               this.vel.multiplyScalar(0.7); other.vel.multiplyScalar(0.7);
-              // Damage both vehicles based on impact speed
-              let impactDmg = Math.floor(relSpeed * 3);
-              if (isPlayerAction || other === currentVehicle) {
-                this.voxelGroup.damageAtLocal(pushDir.clone().negate().multiplyScalar(0.5), 1.0, this.mesh.matrixWorld, this.vel);
-                other.voxelGroup.damageAtLocal(pushDir.clone().multiplyScalar(0.5), 1.0, other.mesh.matrixWorld, other.vel);
-                this.takeDamage(impactDmg, isPlayerAction);
-                other.takeDamage(impactDmg, other === currentVehicle);
-              }
+              // Damage both vehicles — gradual over ~5 hits
+              let impactDmg = Math.floor(relSpeed * 2);
+              this.collisionHits = (this.collisionHits || 0) + 1;
+              other.collisionHits = (other.collisionHits || 0) + 1;
+              // Visual: knock blocks off on impact point
+              let dmgRadius = 0.5 + Math.min(this.collisionHits * 0.15, 1.5);
+              this.voxelGroup.damageAtLocal(pushDir.clone().negate().multiplyScalar(0.5), dmgRadius, this.mesh.matrixWorld, this.vel);
+              other.voxelGroup.damageAtLocal(pushDir.clone().multiplyScalar(0.5), dmgRadius, other.mesh.matrixWorld, other.vel);
+              // Progressive darkening based on damage ratio
+              if (this.voxelGroup.darkenByDamage) this.voxelGroup.darkenByDamage(this.health / this.maxHealth);
+              if (other.voxelGroup.darkenByDamage) other.voxelGroup.darkenByDamage(other.health / other.maxHealth);
+              this.takeDamage(impactDmg, isPlayerAction);
+              other.takeDamage(impactDmg, other === currentVehicle);
               // Camera shake if player involved
               if (isPlayerAction || other === currentVehicle) {
                 camera.position.add(new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2, 0));
@@ -4203,10 +4627,15 @@
             }
             updateHUD();
           }
-          // Drop cash pickup
+          // Drop pickup — cops drop guns, civilians drop cash
           if (isPlayerAction) {
-            let cashAmt = (this.type === 'COP' || this.type === 'ARMY') ? 200 : 50;
-            spawnCashPickup(this.pos.x, this.pos.y, this.pos.z, cashAmt);
+            if (this.type === 'COP') {
+              spawnWeaponPickup(this.pos.x, this.pos.y, this.pos.z, 'cop_pistol');
+            } else if (this.type === 'ARMY') {
+              spawnWeaponPickup(this.pos.x, this.pos.y, this.pos.z, 'army_rifle');
+            } else {
+              spawnCashPickup(this.pos.x, this.pos.y, this.pos.z, 50);
+            }
           }
           this.spawnDeathParticles(this.pos, hitVel || new THREE.Vector3(0, 10, 0));
         }
@@ -4251,11 +4680,10 @@
       // Spawn planes at airport if none exist nearby
       let planeCount = vehicles.filter(v => v.type === 'PLANE').length;
       if (planeCount < 3) {
-        let colors = [0xeeeeee, 0x2244aa, 0xcc2222];
         for (let i = planeCount; i < 3; i++) {
-          let px = AIRPORT_X - 60 + i * 40;
+          let px = AIRPORT_X - 80 + i * 60;
           let pz = AIRPORT_Z + 9;
-          vehicles.push(new Vehicle('PLANE', px, pz, colors[i % colors.length]));
+          vehicles.push(new Vehicle('PLANE', px, pz, 0xffffff));
         }
       }
       while (peds.filter(p => p.type === 'CIVILIAN').length < 20) {
@@ -4267,19 +4695,26 @@
     let carparkCarsSpawned = false;
     function spawnCarparkCars() {
       if (carparkCarsSpawned) return;
-      // Check if carpark chunk is loaded
       let ck = '4,-1';
       if (!activeChunks.has(ck)) return;
       carparkCarsSpawned = true;
-      let baseX = 4 * CHUNK_SIZE + 24, baseZ = -1 * CHUNK_SIZE + 24;
-      let floors = [2, 7, 12, 17];
-      let colors = [0xcc2222, 0x2244aa, 0xeeeeee, 0x222222, 0xffcc00, 0x44aa44, 0x884488, 0xdd8800];
+      let baseX = CARPARK_POS.x, baseZ = CARPARK_POS.z;
+      let floors = [2, 7, 12, 17, 22, 27];
+      let colors = [0xcc2222, 0x2244aa, 0xeeeeee, 0x222222, 0xffcc00, 0x44aa44, 0x884488, 0xdd8800, 0xff6600, 0x009999, 0x990099, 0xcccccc];
       for (let fi = 0; fi < floors.length; fi++) {
-        for (let i = 0; i < 4; i++) {
-          let car = new Vehicle('CIVILIAN', baseX + i * 4 - 6, baseZ + (fi % 2 === 0 ? 4 : -4), colors[(fi * 4 + i) % colors.length]);
-          car.pos.y = floors[fi]; car.parked = true; car.vel.set(0, 0, 0);
-          car.mesh.position.copy(car.pos);
-          vehicles.push(car);
+        // Multiple rows of cars per floor — 2 rows along Z, each with cars spaced along X
+        for (let row = 0; row < 2; row++) {
+          let rowZ = baseZ + (row === 0 ? -6 : 4);
+          for (let i = 0; i < 4; i++) {
+            let carX = baseX - 8 + i * 5;
+            let colorIdx = (fi * 8 + row * 4 + i) % colors.length;
+            let car = new Vehicle('CIVILIAN', carX, rowZ, colors[colorIdx]);
+            car.pos.y = floors[fi]; car.parked = true; car.vel.set(0, 0, 0);
+            car.yaw = row === 0 ? 0 : Math.PI;
+            car.mesh.position.copy(car.pos);
+            if (car.mesh.rotation) car.mesh.rotation.y = car.yaw;
+            vehicles.push(car);
+          }
         }
       }
     }
@@ -4381,7 +4816,8 @@
         updateHUD(); player.group.visible = true;
       } else {
         for (let v of vehicles) {
-          if (!v.isDead && player.pos.distanceToSquared(v.pos) < 25) {
+          let enterDist = v.type === 'PLANE' ? 100 : 25;
+          if (!v.isDead && player.pos.distanceToSquared(v.pos) < enterDist) {
             currentVehicle = v; v.parked = false;
             updateHUD(); player.group.visible = false;
             if (v.type === 'TANK') { tankAimYaw = v.yaw; tankAimPitch = 0; }
@@ -4400,12 +4836,18 @@
               document.getElementById('objective-text').innerText = 'DRIVE TANK TO THE ISLAND';
               showPhoneMessage("Boss: You got a tank! Now drive it to the island. Watch out for the army on your tail!", 15000);
             }
-            // Mission 5: steal plane detection
+            // Mission 6: steal plane detection
             if (missionIndex === 5 && mission.state === 'GO_TO_AIRPORT' && v.type === 'PLANE') {
               mission.state = 'FLY_TO_ISLAND';
               mission.target.set(ISLAND_X, 1, ISLAND_Z);
               document.getElementById('objective-text').innerText = 'FLY TO THE ISLAND';
-              showPhoneMessage("Boss: You're in! Fly south-west to the island. That's your new hideout!", 15000);
+              showPhoneMessage("Boss: You're in! Fly to my private island! Follow the yellow marker.", 15000);
+            }
+            // Any plane entry: show hint and point to island
+            if (v.type === 'PLANE' && !(missionIndex === 5 && mission.state === 'FLY_TO_ISLAND')) {
+              if (missionIndex !== 5 || mission.state !== 'FLY_TO_ISLAND') {
+                showPhoneMessage("Boss: Nice ride! Fly to the private island if you want. W to accelerate, SPACE to climb, steer with A/D.", 12000);
+              }
             }
             break;
           }
@@ -4462,17 +4904,24 @@
         return;
       }
 
-      // On-foot shooting
+      // On-foot shooting — use current weapon stats
+      if (buildMode) return; // Can't shoot in build mode
+      let now = Date.now();
+      let wDef = weaponIndex >= 0 ? playerWeapons[weaponIndex] : null;
+      let fireRate = wDef ? wDef.fireRate : 200;
+      if (now - lastFireTime < fireRate) return;
+      lastFireTime = now;
+
       let camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
       let hitPoint = camera.position.clone().add(camDir.multiplyScalar(60));
       let startPos = player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
       let trueAimDir = hitPoint.sub(startPos).normalize();
       startPos.add(trueAimDir.clone().multiplyScalar(0.8));
       let proj = new Projectile(startPos, trueAimDir, true);
-      if (currentWeapon === 'rocket') {
+      if (wDef && wDef.isRocket) {
         proj.isRocket = true;
         proj.mesh.scale.set(2, 2, 2);
-        proj.mesh.material.color.setHex(0xff4400);
+        proj.mesh.material.color.setHex(wDef.projColor);
       }
       projectiles.push(proj);
     }
@@ -4525,15 +4974,11 @@
         if (k === 'a' || k === 'q' || k === 'arrowleft') { keys.left = true; hideTutorial(); }
         if (k === 'd' || k === 'arrowright') { keys.right = true; hideTutorial(); }
         if (k === ' ') { keys.space = true; hideTutorial(); e.preventDefault(); }
-        if (k === 'b') {
-          if (totalBlocks > 0) {
-            buildMode = !buildMode;
-            updateBlockCounter(); updateHotbar();
-            showFloatingText(buildMode ? 'BUILD MODE ON' : 'BUILD MODE OFF', player.pos);
-          }
+        if (k === 'shift') {
+          cycleWeapon();
         }
-        // Number keys 1-9 for hotbar selection
-        if (k >= '1' && k <= '9' && totalBlocks > 0) {
+        // Number keys 1-9 for hotbar selection (only in build mode)
+        if (k >= '1' && k <= '9' && buildMode && totalBlocks > 0) {
           selectHotbarSlot(parseInt(k) - 1);
         }
         if (k === 'enter') {
@@ -4605,7 +5050,14 @@
       document.addEventListener('mousedown', e => {
         if (e.button === 2 && isPlaying && !isPaused && !currentVehicle) {
           if (totalBlocks > 0) {
-            if (!buildMode) { buildMode = true; updateBlockCounter(); updateHotbar(); }
+            if (!buildMode) {
+              buildMode = true;
+              // Auto-select a valid block type
+              if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
+                for (let bt in blockInventory) { if (blockInventory[bt] > 0) { selectedBlockType = parseInt(bt); break; } }
+              }
+              updateBlockCounter(); updateHotbar();
+            }
             placeBlock();
           }
         }
@@ -4874,8 +5326,14 @@
       // Update cash pickups
       updatePickups(dt);
       updateBlockPickups(dt);
+      updateWeaponPickups(dt);
       updateGhostBlock();
       updateMining(dt);
+      // Auto-fire for automatic weapons (hold mouse to rapid fire)
+      if (isMouseDown && !buildMode && !currentVehicle && weaponIndex >= 0) {
+        let wDef = playerWeapons[weaponIndex];
+        if (wDef && wDef.auto) fireWeapon();
+      }
 
       // Handle Upgrade/Success Sequence Camera Animation
       if (mission.state === 'SUCCESS') {
@@ -4978,13 +5436,13 @@
         setTimeout(() => { if (mission.state === 'AT_SAFE_HOUSE') triggerMissionSuccess(); }, 10000);
       }
       // Mission 5: Carpark block destruction - proximity triggers the mission phase
-      if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 400) {
+      if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 900) {
         mission.state = 'DESTROY_CARPARK';
-        document.getElementById('objective-text').innerText = 'DESTROY CARPARK: 0%';
+        document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK';
         document.getElementById('demolition-progress').style.display = 'block';
         document.getElementById('demo-fill').style.height = '0%';
         document.getElementById('demo-pct').innerText = '0%';
-        showPhoneMessage("Boss: You're at the carpark. Level this building! Destroy at least 50% of it with your rocket launcher!", 15000);
+        showPhoneMessage("Boss: You're at the carpark. Level this building! Destroy at least 10% of it!", 15000);
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
@@ -5014,7 +5472,7 @@
           mission.state = 'COLLECT_BLOCKS';
           blocksPlacedForMission = 0;
           document.getElementById('objective-text').innerText = 'COLLECT BLOCKS (destroy buildings) then BUILD BARRICADE: 0/20';
-          showPhoneMessage("Boss: Good, you're at the spot. Now destroy some buildings to collect blocks, then build a wall across this road! Press B for build mode, right-click to place blocks.", 20000);
+          showPhoneMessage("Boss: Good, you're at the spot. Now destroy some buildings to collect blocks, then build a wall across this road! Press SHIFT to swap to build mode, right-click to place blocks.", 20000);
           // Give some starter blocks if player has none
           if (totalBlocks < 5) {
             let starterTypes = [TYPES.BRICK, TYPES.CONCRETE, TYPES.STEEL];
@@ -5028,6 +5486,12 @@
           document.getElementById('objective-text').innerText = 'BUILD BARRICADE: 0/20 blocks';
           showPhoneMessage("Boss: You've got enough blocks! Now build that barricade across the road. Right-click to place blocks!", 15000);
         }
+      }
+
+      // Victory: detect plane landing on island (any time, any mission)
+      if (!gameWon && currentVehicle && currentVehicle.type === 'PLANE' && !currentVehicle.isFlying) {
+        let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
+        if (islandDist < 8000) showVictoryScreen();
       }
 
       if (currentVehicle) {
@@ -5102,10 +5566,12 @@
            mAct.innerText = 'Store'; showMobile = true;
         } else {
            for (let v of vehicles) {
-             if (!v.isDead && player.pos.distanceToSquared(v.pos) < 25) {
-               document.getElementById('action-msg').innerText = isMobileDevice ? "Press Drive" : "Press Enter to Drive";
+             let enterDist = v.type === 'PLANE' ? 100 : 25;
+             if (!v.isDead && player.pos.distanceToSquared(v.pos) < enterDist) {
+               let label = v.type === 'PLANE' ? 'Fly Plane' : 'Drive';
+               document.getElementById('action-msg').innerText = isMobileDevice ? ("Press " + (v.type === 'PLANE' ? 'Fly' : label)) : ("Press Enter to " + label);
                document.getElementById('action-msg').style.display = 'block';
-               mAct.innerText = 'Drive'; showMobile = true; break;
+               mAct.innerText = label; showMobile = true; break;
              }
            }
         }
