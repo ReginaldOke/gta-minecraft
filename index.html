@@ -1922,6 +1922,23 @@
       setTimeout(() => el.remove(), 1200);
     }
 
+    function showPlaneControls() {
+      let overlay = document.createElement('div');
+      overlay.id = 'plane-controls-overlay';
+      overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.85); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
+      overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
+        '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
+        '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
+        '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down / reverse<br>' +
+        '<span style="color:#ffcc00; font-weight:bold;">A / D</span> — Steer left / right<br>' +
+        '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
+        '<span style="color:#aaa;">Release Space to descend</span><br>' +
+        '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
+        '</div>';
+      document.body.appendChild(overlay);
+      setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 5000);
+    }
+
     // --- Block Building System ---
     function addBlockToInventory(blockType) {
       if (!blockType || blockType === TYPES.EMPTY || blockType === TYPES.WATER) return;
@@ -4373,14 +4390,14 @@
         // --- PLANE FLIGHT PHYSICS ---
         if (this.type === 'PLANE' && !this.isDead) {
           const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-          this.vel.add(fwd.clone().multiplyScalar(-inputAccel * 50 * dt));
+          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 50 * dt));
           let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
           this.isFlying = speed > 12 || this.pos.y > 5;
           if (speed > 2) this.yaw -= inputSteer * 2.5 * dt;
-          // Lift & climb
-          if (useNOS && this.isFlying) this.vel.y += 25 * dt; // Space = climb
+          // Lift & climb (Space key handled in game loop, useNOS for mouse/mobile)
+          if (useNOS && this.isFlying) this.vel.y += 25 * dt;
           if (this.isFlying) {
-            this.vel.y -= 8 * dt; // Gravity while flying
+            this.vel.y -= 8 * dt; // Gravity — plane descends when not pressing Space
             if (speed > 15) this.vel.y += speed * 0.12 * dt; // Speed-based lift
           } else {
             this.vel.y -= 30 * dt; // Ground gravity
@@ -5025,11 +5042,15 @@
               document.getElementById('objective-text').innerText = 'FLY TO THE ISLAND';
               showPhoneMessage("Boss: You're in! Fly to my private island! Follow the yellow marker.", 15000);
             }
-            // Any plane entry: show hint and point to island
+            // Any plane entry: show controls overlay and hint
             if (v.type === 'PLANE' && !(missionIndex === 5 && mission.state === 'FLY_TO_ISLAND')) {
               if (missionIndex !== 5 || mission.state !== 'FLY_TO_ISLAND') {
-                showPhoneMessage("Boss: Nice ride! Fly to the private island if you want. W to accelerate, SPACE to climb, steer with A/D.", 12000);
+                showPhoneMessage("Boss: Nice ride! Fly to the private island if you want!", 8000);
               }
+            }
+            if (v.type === 'PLANE') {
+              // Show clear flight controls on screen
+              showPlaneControls();
             }
             break;
           }
@@ -5212,7 +5233,7 @@
           } else {
             player.yaw -= e.movementX * 0.002;
             player.pitch -= e.movementY * 0.002;
-            player.pitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, player.pitch));
+            player.pitch = Math.max(buildMode ? -Math.PI / 2 : -Math.PI / 2.05, Math.min(buildMode ? Math.PI / 2 : Math.PI / 2.05, player.pitch));
           }
         }
       });
@@ -5299,7 +5320,7 @@
               tankAimPitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 6, tankAimPitch));
             } else {
               player.yaw -= (t.clientX - lastLookX) * 0.01; player.pitch -= (t.clientY - lastLookY) * 0.01;
-              player.pitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, player.pitch));
+              player.pitch = Math.max(buildMode ? -Math.PI / 2 : -Math.PI / 2.05, Math.min(buildMode ? Math.PI / 2 : Math.PI / 2.05, player.pitch));
             }
             lastLookX = t.clientX; lastLookY = t.clientY;
           }
@@ -5801,7 +5822,7 @@
         const dir = new THREE.Vector3(moveX, 0, moveZ);
         if (dir.lengthSq() > 0.01) dir.normalize(); else dir.set(0, 0, 0);
         dir.applyAxisAngle(_upVec, player.yaw);
-        let pSpeed = inWater ? 6 : 15;
+        let pSpeed = inWater ? 6 : (buildMode ? 6 : 15);
         let stepX = dir.x * pSpeed * dt, stepZ = dir.z * pSpeed * dt;
         let pCheckY = Math.floor(player.pos.y + 0.5);
         // Step-up collision: try 1 block, then 2 blocks (for stairs/ramps)
@@ -5824,11 +5845,14 @@
         if (nextY - 0.5 <= floorY) { nextY = floorY + 0.5; player.vel.y = 0; }
         player.pos.set(player.pos.x + stepX, nextY, player.pos.z + stepZ);
         player.updatePlayerAnim(dt, moveX !== 0 || moveZ !== 0);
-        
+        // Hide player model in build mode (first-person view)
+        player.group.visible = !buildMode;
+
         let aimDir = new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch)).normalize();
         let rightDir = new THREE.Vector3(-Math.cos(player.yaw), 0, Math.sin(player.yaw)).normalize();
-        let camDist = 5, targetCamFocus = player.pos.clone(); targetCamFocus.y += 2.0;
-        let idealCamPos = targetCamFocus.clone().sub(aimDir.clone().multiplyScalar(camDist)).add(rightDir.clone().multiplyScalar(1.5));
+        let camDist = buildMode ? 0.5 : 5;
+        let targetCamFocus = player.pos.clone(); targetCamFocus.y += buildMode ? 2.5 : 2.0;
+        let idealCamPos = targetCamFocus.clone().sub(aimDir.clone().multiplyScalar(camDist)).add(rightDir.clone().multiplyScalar(buildMode ? 0 : 1.5));
         idealCamPos = getCameraPos(targetCamFocus, idealCamPos);
         camera.position.lerp(idealCamPos, Math.min(1.0, 15 * dt));
         camera.lookAt(targetCamFocus.clone().add(aimDir.clone().multiplyScalar(50)));
