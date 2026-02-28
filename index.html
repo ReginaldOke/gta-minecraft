@@ -1421,6 +1421,7 @@
 
     window.debugTeleport = function(x, y, z) { player.pos.set(x, y, z); };
     window.debugMission = function(idx) { missionIndex = idx; startMission(idx); };
+    window.debugBlocks = function(n) { n=n||20; blockInventory[TYPES.BRICK]=n; blockInventory[TYPES.GLASS]=n; blockInventory[TYPES.CONCRETE]=n; totalBlocks=n*3; updateBlockCounter(); updateHotbar(); };
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
       if (storeOpen) { closeStore(); return; }
@@ -1447,6 +1448,7 @@
       }
       isPlaying = true;
       if (!isMobileDevice) renderer.domElement.requestPointerLock();
+      if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
     };
 
     function startMission(index) {
@@ -1570,6 +1572,11 @@
       mission.state = 'SUCCESS'; mission.active = false;
       document.exitPointerLock();
       if (waypointArrow3D) waypointArrow3D.visible = false;
+      // Hide mobile controls so they don't block the success screen
+      let mAct = document.getElementById('btn-interact');
+      if (mAct) mAct.style.display = 'none';
+      document.getElementById('action-msg').style.display = 'none';
+      if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
       let carCounter = document.getElementById('car-counter');
       if (carCounter) carCounter.style.display = 'none';
       document.getElementById('demolition-progress').style.display = 'none';
@@ -1859,11 +1866,17 @@
         if (weaponIndex >= playerWeapons.length) {
           if (totalBlocks > 0) {
             weaponIndex = -1; buildMode = true;
-            // Auto-select first block type the player has
+            // Auto-select first block type the player has and sync hotbarIndex
             if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
-              for (let bt in blockInventory) {
-                if (blockInventory[bt] > 0) { selectedBlockType = parseInt(bt); break; }
+              for (let i = 0; i < hotbarSlots.length; i++) {
+                if (blockInventory[hotbarSlots[i]] > 0) {
+                  hotbarIndex = i; selectedBlockType = hotbarSlots[i]; break;
+                }
               }
+            } else {
+              // Sync hotbarIndex to match selectedBlockType
+              let idx = hotbarSlots.indexOf(selectedBlockType);
+              if (idx >= 0) hotbarIndex = idx;
             }
           } else {
             weaponIndex = 0;
@@ -2174,8 +2187,8 @@
         if (bar) bar.style.display = 'none';
         return;
       }
-      // On mobile: only show hotbar when in build mode
-      if (isMobileDevice && !buildMode) { bar.style.display = 'none'; return; }
+      // Only show hotbar when in build mode
+      if (!buildMode) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       let slots = bar.children;
       for (let i = 0; i < 9; i++) {
@@ -5038,6 +5051,22 @@
         if (k >= '1' && k <= '9' && buildMode && totalBlocks > 0) {
           selectHotbarSlot(parseInt(k) - 1);
         }
+        // E/F keys to cycle block selection left/right in build mode
+        if ((k === 'e' || k === 'f') && buildMode && totalBlocks > 0) {
+          let dir = k === 'e' ? -1 : 1;
+          let startIdx = hotbarIndex;
+          for (let i = 0; i < 9; i++) {
+            let nextIdx = ((hotbarIndex + dir) % 9 + 9) % 9;
+            hotbarIndex = nextIdx;
+            selectedBlockType = hotbarSlots[hotbarIndex];
+            if (blockInventory[selectedBlockType] > 0) break;
+          }
+          selectedBlockType = hotbarSlots[hotbarIndex];
+          updateBlockCounter(); updateHotbar();
+          if (blockInventory[selectedBlockType] > 0) {
+            showFloatingText(BLOCK_NAMES[selectedBlockType] + ' (' + blockInventory[selectedBlockType] + ')', player.pos);
+          }
+        }
         if (k === 'enter') {
           let px = player.pos.x, pz = player.pos.z;
           let inBank = px >= 60 && px <= 84 && pz >= 60 && pz <= 84;
@@ -5082,11 +5111,8 @@
           mouseDownTime = Date.now();
           if (document.pointerLockElement === renderer.domElement) {
             if (buildMode && !currentVehicle) {
-              // In build mode: left-click mines the looked-at block
-              let ray = blockRaycast(5);
-              if (ray && ray.hit) {
-                startMining(ray.hit.x, ray.hit.y, ray.hit.z, ray.hitType);
-              }
+              // In build mode: left-click places a block
+              placeBlock();
             }
             else if (currentVehicle && currentVehicle.type === 'TANK') fireWeapon();
             else if (!currentVehicle) fireWeapon();
@@ -5102,33 +5128,19 @@
           cancelMining();
         }
       });
-      // Right-click to place block (Minecraft-style)
+      // Prevent right-click context menu
       document.addEventListener('contextmenu', e => { e.preventDefault(); });
-      document.addEventListener('mousedown', e => {
-        if (e.button === 2 && isPlaying && !isPaused && !currentVehicle) {
-          if (totalBlocks > 0) {
-            if (!buildMode) {
-              buildMode = true;
-              // Auto-select a valid block type
-              if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
-                for (let bt in blockInventory) { if (blockInventory[bt] > 0) { selectedBlockType = parseInt(bt); break; } }
-              }
-              updateBlockCounter(); updateHotbar();
-            }
-            placeBlock();
-          }
-        }
-      });
-      // Scroll wheel to cycle hotbar slots
+      // Scroll wheel to cycle hotbar slots (only in build mode)
       document.addEventListener('wheel', e => {
-        if (!isPlaying || isPaused || totalBlocks <= 0) return;
-        if (e.deltaY > 0) hotbarIndex = (hotbarIndex + 1) % 9;
-        else hotbarIndex = (hotbarIndex + 8) % 9;
+        if (!isPlaying || isPaused || !buildMode || totalBlocks <= 0) return;
+        let dir = e.deltaY > 0 ? 1 : -1;
+        for (let i = 0; i < 9; i++) {
+          hotbarIndex = ((hotbarIndex + dir) % 9 + 9) % 9;
+          if (blockInventory[hotbarSlots[hotbarIndex]] > 0) break;
+        }
         selectedBlockType = hotbarSlots[hotbarIndex];
         updateBlockCounter(); updateHotbar();
-        if (blockInventory[selectedBlockType] > 0) {
-          showFloatingText('Selected: ' + (BLOCK_NAMES[selectedBlockType] || 'Block'), player.pos);
-        }
+        showFloatingText(BLOCK_NAMES[selectedBlockType] + ' (' + blockInventory[selectedBlockType] + ')', player.pos);
       });
     }
 
