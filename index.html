@@ -676,6 +676,30 @@
         width: 32px !important;
         height: 32px !important;
       }
+      /* Mission success screen: fit on mobile */
+      .ms-title {
+        font-size: 32px !important;
+        margin-bottom: 15px !important;
+        text-shadow: 2px 2px 0 #b8860b !important;
+        text-align: center !important;
+        width: 100% !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+      }
+      .ms-item {
+        font-size: 16px !important;
+        margin: 6px 10px !important;
+        padding: 10px 15px !important;
+        width: auto !important;
+        max-width: 85vw;
+        gap: 12px !important;
+      }
+      .ms-icon { font-size: 24px !important; }
+      .ms-btn {
+        margin-top: 20px !important;
+        padding: 14px 40px !important;
+        font-size: 20px !important;
+      }
     }
     .phone-dismiss {
       font-size: 11px; color: #888; text-align: center; margin-top: 8px; cursor: pointer;
@@ -789,10 +813,10 @@
   <div id="mission-success"></div>
 
   <div id="store-ui">
-    <div class="store-title">WEAPON STORE</div>
+    <div class="store-title">WEAPON SHOP</div>
     <div class="store-balance" id="store-balance">$0</div>
     <div class="store-grid" id="store-grid"></div>
-    <button class="store-close-btn" onclick="closeStore()">LEAVE STORE [ESC]</button>
+    <button class="store-close-btn" onclick="closeStore()" ontouchstart="event.preventDefault(); closeStore();">LEAVE SHOP</button>
   </div>
 
   <div id="vignette"></div>
@@ -1287,9 +1311,9 @@
           { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
           { icon: '🏎️', text: 'Driving Skills Improved!', action: 'drive_skill' }
         ]},
-      { id: 2, name: 'GEAR UP', objective: 'MISSION 3: VISIT THE WEAPON STORE',
+      { id: 2, name: 'GEAR UP', objective: 'MISSION 3: VISIT THE WEAPON SHOP',
         target: [-73, 1, 21], reward: 0,
-        phoneStart: "Boss: Time to gear up. Head to the weapon store and buy yourself a rocket launcher. You're gonna need it.",
+        phoneStart: "Boss: Time to gear up. Head to the weapon shop and buy yourself a rocket launcher. You're gonna need it.",
         rewards: [
           { icon: '🚀', text: 'Rocket Launcher Equipped!', action: 'rocket_equip' },
           { icon: '🏪', text: 'Store Always Open!', action: 'store_open' }
@@ -1401,8 +1425,9 @@
       radioAudio.play().catch(() => {});
     }
 
+    let _phoneTimeout = null;
     function showPhoneMessage(text, duration = 20000) {
-      if (!text) return;
+      if (!text || mission.state === 'SUCCESS') return;
       currentPhoneMessage = text;
       let phone = document.getElementById('phone-ui');
       document.getElementById('phone-text').innerText = text;
@@ -1429,6 +1454,8 @@
     window.debugTeleport = function(x, y, z) { player.pos.set(x, y, z); };
     window.debugMission = function(idx) { missionIndex = idx; startMission(idx); };
     window.debugBlocks = function(n) { n=n||20; blockInventory[TYPES.BRICK]=n; blockInventory[TYPES.GLASS]=n; blockInventory[TYPES.CONCRETE]=n; totalBlocks=n*3; updateBlockCounter(); updateHotbar(); };
+    window.debugFly = function() { interactVehicle(); };
+    window.debugVehicles = function() { return vehicles.filter(v => v.type === 'PLANE').map(v => ({x:Math.round(v.pos.x), y:Math.round(v.pos.y), z:Math.round(v.pos.z), dead:v.isDead})); };
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
       if (storeOpen) { closeStore(); return; }
@@ -1584,6 +1611,16 @@
       if (mAct) mAct.style.display = 'none';
       document.getElementById('action-msg').style.display = 'none';
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
+      // Hide phone notification and cancel any pending phone timeouts
+      if (_phoneTimeout) { clearTimeout(_phoneTimeout); _phoneTimeout = null; }
+      let phoneUI = document.getElementById('phone-ui');
+      if (phoneUI) {
+        if (phoneUI._hideTimer) clearTimeout(phoneUI._hideTimer);
+        phoneUI.classList.remove('active');
+        phoneUI.style.display = 'none';
+        phoneUI.style.top = '-350px';
+        phoneUI.style.bottom = '-350px';
+      }
       let carCounter = document.getElementById('car-counter');
       if (carCounter) carCounter.style.display = 'none';
       document.getElementById('demolition-progress').style.display = 'none';
@@ -1698,7 +1735,10 @@
     // --- Store System ---
     window.openStore = function() {
       storeOpen = true; isPaused = true;
-      document.exitPointerLock();
+      try { document.exitPointerLock(); } catch(e) {}
+      // Hide phone so it doesn't overlap shop
+      let phoneUI = document.getElementById('phone-ui');
+      if (phoneUI) { if (phoneUI._hideTimer) clearTimeout(phoneUI._hideTimer); phoneUI.classList.remove('active'); phoneUI.style.display = 'none'; }
       document.getElementById('store-balance').innerText = '$' + score;
       let grid = document.getElementById('store-grid');
       grid.innerHTML = '';
@@ -1710,16 +1750,25 @@
         card.innerHTML = '<div class="store-item-icon">' + item.icon + '</div>' +
           '<div class="store-item-name">' + item.name + '</div>' +
           '<div class="store-item-price">' + (owned ? 'OWNED' : '$' + item.price) + '</div>';
-        if (!owned && canAfford) card.onclick = () => buyItem(item.id);
+        if (!owned && canAfford) {
+          let buyHandler = () => buyItem(item.id);
+          card.onclick = buyHandler;
+          card.addEventListener('touchstart', (e) => { e.preventDefault(); buyHandler(); });
+        }
         grid.appendChild(card);
       });
       document.getElementById('store-ui').style.display = 'flex';
+      if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
     };
 
     window.closeStore = function() {
       storeOpen = false; isPaused = false;
       document.getElementById('store-ui').style.display = 'none';
-      renderer.domElement.requestPointerLock();
+      if (isMobileDevice) {
+        document.getElementById('mobile-controls').style.display = 'block';
+      } else {
+        renderer.domElement.requestPointerLock();
+      }
       // Check if mission 3 requires buying rocket
       if (missionIndex === 2 && mission.state === 'BUY_WEAPON' && playerInventory.has('rocket')) {
         triggerMissionSuccess();
@@ -2316,7 +2365,7 @@
       startMission(0);
       // Phone message appears after 6 seconds
       let phoneMsg = MISSIONS[0].phoneStart;
-      setTimeout(() => showPhoneMessage(phoneMsg, 20000), 6000);
+      _phoneTimeout = setTimeout(() => showPhoneMessage(phoneMsg, 20000), 6000);
       startRadio();
       let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
       if (!isMobile) renderer.domElement.requestPointerLock();
@@ -3228,7 +3277,7 @@
               if (dx*dx+dy*dy+dz*dz <= r*r) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
             for (let fi = 0; fi < 25; fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
             for (let si = 0; si < 12; si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
-            for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 200) v.takeDamage(500, true);
+            for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 200 && !(v.type === 'PLANE' && v.parked && v !== currentVehicle)) v.takeDamage(500, true);
             for (let p of peds) if (!p.isDead && p.pos.distanceToSquared(this.pos) < 100) p.takeDamage(200, this.pos, this.vel, true);
             return true; // Remove projectile
           }
@@ -3249,7 +3298,7 @@
               for (let fi = 0; fi < 15; fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
               for (let si = 0; si < 8; si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
               // Damage nearby vehicles
-              for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 100) v.takeDamage(300, true);
+              for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 100 && !(v.type === 'PLANE' && v.parked && v !== currentVehicle)) v.takeDamage(300, true);
             } else if (this.isPlayer) {
               triggerDestroy(this.pos.x, this.pos.y, this.pos.z, this.vel, true);
             }
@@ -3258,6 +3307,8 @@
           }
           for (let v of vehicles) {
             if (v !== currentVehicle && !v.isDead && this.pos.distanceToSquared(v.pos) < 12.25) {
+              // Don't let stray bullets damage parked planes at the airport
+              if (v.type === 'PLANE' && v.parked && v !== currentVehicle) continue;
               let localHit = this.pos.clone().sub(v.pos).applyAxisAngle(_upVec, -v.yaw);
               v.voxelGroup.damageAtLocal(localHit, 1.5, v.mesh.matrixWorld, this.vel);
               v.takeDamage(this.isPlayer ? 100 : 5, this.isPlayer); // Player shreds cops
@@ -4440,6 +4491,9 @@
         // Vehicle-to-vehicle collision
         for (let other of vehicles) {
           if (other === this || other.isDead) continue;
+          // Don't let NPC cars damage parked planes
+          if (other.type === 'PLANE' && other !== currentVehicle) continue;
+          if (this.type === 'PLANE' && this !== currentVehicle) continue;
           let distSq = this.pos.distanceToSquared(other.pos);
           if (distSq < 8) {
             let pushDir = this.pos.clone().sub(other.pos);
@@ -4727,8 +4781,9 @@
     function spawnTraffic() {
       vehicles = vehicles.filter(v => {
         if (v === currentVehicle) return true; // Never cull the vehicle the player is driving
+        if (v.type === 'PLANE') return true; // Never cull planes — always available at airport
         let referencePos = currentVehicle ? currentVehicle.pos : player.pos;
-        let maxDist = v.type === 'PLANE' ? CHUNK_SIZE * CHUNK_SIZE * 25 : CHUNK_SIZE * CHUNK_SIZE * 9;
+        let maxDist = CHUNK_SIZE * CHUNK_SIZE * 9;
         if (v.pos.distanceToSquared(referencePos) > maxDist) { v.dispose(); return false; }
         return true;
       });
@@ -4754,13 +4809,18 @@
         }
         vehicles.push(v);
       }
-      // Spawn planes at airport if none exist nearby
-      let planeCount = vehicles.filter(v => v.type === 'PLANE').length;
-      if (planeCount < 3) {
-        for (let i = planeCount; i < 3; i++) {
+      // Spawn planes at airport — respawn dead ones too
+      let alivePlanes = vehicles.filter(v => v.type === 'PLANE' && !v.isDead);
+      // Remove dead planes
+      vehicles.filter(v => v.type === 'PLANE' && v.isDead).forEach(dp => { dp.dispose(); });
+      vehicles = vehicles.filter(v => !(v.type === 'PLANE' && v.isDead));
+      if (alivePlanes.length < 3) {
+        for (let i = alivePlanes.length; i < 3; i++) {
           let px = AIRPORT_X - 80 + i * 60;
           let pz = AIRPORT_Z + 9;
-          vehicles.push(new Vehicle('PLANE', px, pz, 0xffffff));
+          let p = new Vehicle('PLANE', px, pz, 0xffffff);
+          p.parked = true;
+          vehicles.push(p);
         }
       }
       while (peds.filter(p => p.type === 'CIVILIAN').length < 20) {
@@ -4889,11 +4949,13 @@
     function interactVehicle() {
       if (currentVehicle) {
         player.pos.copy(currentVehicle.pos).add(new THREE.Vector3(3, 2, 0));
-        player.yaw = currentVehicle.yaw; currentVehicle = null;
+        player.yaw = currentVehicle.yaw;
+        if (currentVehicle.type === 'PLANE') currentVehicle.parked = true;
+        currentVehicle = null;
         updateHUD(); player.group.visible = true;
       } else {
         for (let v of vehicles) {
-          let enterDist = v.type === 'PLANE' ? 100 : 25;
+          let enterDist = v.type === 'PLANE' ? 625 : 25;
           if (!v.isDead && player.pos.distanceToSquared(v.pos) < enterDist) {
             currentVehicle = v; v.parked = false;
             updateHUD(); player.group.visible = false;
@@ -5107,7 +5169,7 @@
           } else {
             player.yaw -= e.movementX * 0.002;
             player.pitch -= e.movementY * 0.002;
-            player.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, player.pitch));
+            player.pitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, player.pitch));
           }
         }
       });
@@ -5194,7 +5256,7 @@
               tankAimPitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 6, tankAimPitch));
             } else {
               player.yaw -= (t.clientX - lastLookX) * 0.01; player.pitch -= (t.clientY - lastLookY) * 0.01;
-              player.pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, player.pitch));
+              player.pitch = Math.max(-Math.PI / 2.05, Math.min(Math.PI / 2.05, player.pitch));
             }
             lastLookX = t.clientX; lastLookY = t.clientY;
           }
@@ -5236,8 +5298,21 @@
         e.preventDefault();
         if (totalBlocks > 0) {
           buildMode = !buildMode;
+          // Auto-select first available block when entering build mode
+          if (buildMode) {
+            if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
+              for (let i = 0; i < hotbarSlots.length; i++) {
+                if (blockInventory[hotbarSlots[i]] > 0) {
+                  hotbarIndex = i; selectedBlockType = hotbarSlots[i]; break;
+                }
+              }
+            } else {
+              let idx = hotbarSlots.indexOf(selectedBlockType);
+              if (idx >= 0) hotbarIndex = idx;
+            }
+          }
           updateBlockCounter(); updateHotbar();
-          showFloatingText(buildMode ? 'BUILD MODE ON' : 'BUILD MODE OFF', player.pos);
+          showFloatingText(buildMode ? 'BUILD: ' + (BLOCK_NAMES[selectedBlockType] || 'Block') : 'BUILD MODE OFF', player.pos);
         } else {
           showFloatingText('No blocks! Destroy buildings to collect.', player.pos);
         }
@@ -5507,7 +5582,7 @@
       let pPos = currentVehicle ? currentVehicle.pos : player.pos;
       // Mission 3: Store proximity phone message - remind to buy rocket launcher
       if (mission.active && mission.state === 'GO_TO_STORE' && !currentVehicle && pPos.distanceToSquared(STORE_POS) < 400) {
-        showPhoneMessage(isMobileDevice ? "Boss: You're at the store. Get inside and buy the Rocket Launcher! Press Store to enter." : "Boss: You're at the store. Get inside and buy the Rocket Launcher! Press Enter to enter.", 10000);
+        showPhoneMessage(isMobileDevice ? "Boss: You're at the shop. Get inside and buy the Rocket Launcher! Press Shop to enter." : "Boss: You're at the shop. Get inside and buy the Rocket Launcher! Press Enter to enter.", 10000);
         mission.state = 'ENTER_STORE';
       }
       if (mission.active && mission.state === 'DRIVE_TO_ALLEY' && pPos.distanceToSquared(ALLEY_POS) < 225) {
@@ -5644,12 +5719,12 @@
            document.getElementById('action-msg').style.display = 'block';
            mAct.innerText = 'Rob'; showMobile = true;
         } else if (inStore && (missionIndex >= 2 || playerInventory.has('store_unlocked'))) {
-           document.getElementById('action-msg').innerText = isMobileDevice ? "Press Store" : "Press Enter to Enter Store";
+           document.getElementById('action-msg').innerText = isMobileDevice ? "Press Shop" : "Press Enter to Enter Shop";
            document.getElementById('action-msg').style.display = 'block';
-           mAct.innerText = 'Store'; showMobile = true;
+           mAct.innerText = 'Shop'; showMobile = true;
         } else {
            for (let v of vehicles) {
-             let enterDist = v.type === 'PLANE' ? 100 : 25;
+             let enterDist = v.type === 'PLANE' ? 625 : 25;
              if (!v.isDead && player.pos.distanceToSquared(v.pos) < enterDist) {
                let label = v.type === 'PLANE' ? 'Fly Plane' : 'Drive';
                document.getElementById('action-msg').innerText = isMobileDevice ? ("Press " + (v.type === 'PLANE' ? 'Fly' : label)) : ("Press Enter to " + label);
