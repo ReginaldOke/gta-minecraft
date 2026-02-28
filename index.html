@@ -618,6 +618,59 @@
       }
       #start-controls-desktop { display: none !important; }
       #start-controls-mobile { display: block !important; }
+      /* Smaller minimap on mobile */
+      #minimap-container {
+        width: 90px !important;
+        height: 90px !important;
+        border-width: 2px !important;
+      }
+      #minimap { width: 90px !important; height: 90px !important; }
+      /* Smaller health/NOS bars */
+      .bar-container {
+        width: 120px !important;
+        height: 14px !important;
+      }
+      .bar-label {
+        font-size: 10px !important;
+        top: -2px !important;
+      }
+      /* Smaller score text */
+      #score-display {
+        font-size: 14px !important;
+      }
+      /* Smaller block counter */
+      #block-counter {
+        font-size: 10px !important;
+        padding: 2px 5px !important;
+      }
+      /* Reduce HUD padding */
+      .hud-top {
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+      }
+      /* Ensure right-side buttons don't overflow */
+      #swap-btn, #pause-btn {
+        padding: 4px 8px !important;
+        font-size: 11px !important;
+      }
+      /* Smaller wanted stars */
+      .stars {
+        font-size: 16px !important;
+      }
+      /* Objective text smaller */
+      #objective-text {
+        font-size: 12px !important;
+        max-width: 45vw;
+        text-align: right;
+      }
+      /* Hotbar: move up above action buttons, smaller slots */
+      #hotbar {
+        bottom: 100px !important;
+      }
+      #hotbar .hotbar-slot {
+        width: 32px !important;
+        height: 32px !important;
+      }
     }
     .phone-dismiss {
       font-size: 11px; color: #888; text-align: center; margin-top: 8px; cursor: pointer;
@@ -1393,7 +1446,7 @@
         mission.active = false; mission.state = 'DONE';
       }
       isPlaying = true;
-      renderer.domElement.requestPointerLock();
+      if (!isMobileDevice) renderer.domElement.requestPointerLock();
     };
 
     function startMission(index) {
@@ -1547,7 +1600,9 @@
       let btn = document.createElement('button');
       btn.className = 'ms-btn'; btn.id = 'ms-btn';
       btn.innerText = missionIndex < MISSIONS.length - 1 ? 'NEXT MISSION' : 'FREE ROAM';
-      btn.onclick = () => continueGame();
+      let btnHandler = () => continueGame();
+      btn.onclick = btnHandler;
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); btnHandler(); });
       btn.style.pointerEvents = 'auto';
       container.appendChild(btn);
       setTimeout(() => btn.style.opacity = '1', 1000 + m.rewards.length * 1000 + 500);
@@ -2119,6 +2174,8 @@
         if (bar) bar.style.display = 'none';
         return;
       }
+      // On mobile: only show hotbar when in build mode
+      if (isMobileDevice && !buildMode) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
       let slots = bar.children;
       for (let i = 0; i < 9; i++) {
@@ -5287,6 +5344,13 @@
         }
       }
       
+      // Pre-game cinematic camera spin
+      if (!isPlaying) {
+        let time = Date.now() * 0.001;
+        let spinR = 40, spinH = 30;
+        camera.position.set(Math.cos(time * 0.15) * spinR, spinH, Math.sin(time * 0.15) * spinR);
+        camera.lookAt(0, 5, 0);
+      }
       if (isPlaying && !isPaused) {
         skybox.position.copy(camera.position); drawMinimap();
         // Update dust particles to follow player
