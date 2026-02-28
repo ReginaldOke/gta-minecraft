@@ -1929,10 +1929,10 @@
       overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
         '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
         '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
-        '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down / reverse<br>' +
+        '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down + descend<br>' +
         '<span style="color:#ffcc00; font-weight:bold;">A / D</span> — Steer left / right<br>' +
         '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
-        '<span style="color:#aaa;">Release Space to descend</span><br>' +
+        '<span style="color:#aaa;">Release Space to glide down</span><br>' +
         '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
         '</div>';
       document.body.appendChild(overlay);
@@ -4434,20 +4434,22 @@
         // --- PLANE FLIGHT PHYSICS ---
         if (this.type === 'PLANE' && !this.isDead) {
           const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 50 * dt));
+          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 30 * dt));
           let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
+          // Cap plane speed so terrain has time to load
+          if (speed > 40) { let s = 40 / speed; this.vel.x *= s; this.vel.z *= s; speed = 40; }
           this.isFlying = speed > 12 || this.pos.y > 5;
           if (speed > 2) this.yaw -= inputSteer * 2.5 * dt;
           // Lift & climb (Space key handled in game loop, useNOS for mouse/mobile)
           if (useNOS && this.isFlying) this.vel.y += 25 * dt;
           if (this.isFlying) {
-            this.vel.y -= 8 * dt; // Gravity — plane descends when not pressing Space
-            if (speed > 15) this.vel.y += speed * 0.12 * dt; // Speed-based lift
+            this.vel.y -= 12 * dt; // Gravity — plane descends when not pressing Space
+            if (speed > 15) this.vel.y += speed * 0.04 * dt; // Gentle speed-based lift
           } else {
             this.vel.y -= 30 * dt; // Ground gravity
           }
           // Drag
-          this.vel.x *= 0.997; this.vel.z *= 0.997; this.vel.y *= 0.995;
+          this.vel.x *= 0.995; this.vel.z *= 0.995; this.vel.y *= 0.99;
           let stepX = this.vel.x * dt, stepZ = this.vel.z * dt;
           this.pos.x += stepX; this.pos.z += stepZ; this.pos.y += this.vel.y * dt;
           // Ground check
@@ -5783,6 +5785,10 @@
         }
         if (keys.space && currentVehicle.type === 'PLANE') {
           currentVehicle.vel.y += 25 * dt;
+        }
+        // S key actively descends the plane for landing
+        if (keys.backward && currentVehicle.type === 'PLANE' && currentVehicle.isFlying) {
+          currentVehicle.vel.y -= 15 * dt;
         }
 
         if (currentVehicle.type === 'TANK') {
