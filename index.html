@@ -883,7 +883,7 @@
       </div>
       <div>
         <div style="text-align: right; margin-bottom: 5px;">
-          <button id="swap-btn" onclick="cycleWeapon()" style="display:none; background: rgba(255,180,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Swap</button><button id="pause-btn" onclick="togglePause()" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">[P] PAUSE / [ESC]</button>
+          <button id="swap-btn" onclick="cycleWeapon()" style="display:none; background: rgba(255,180,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Swap</button><button id="desktop-build-btn" onclick="toggleBuildMode()" style="display:none; background: rgba(255,204,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Build [Shift]</button><button id="pause-btn" onclick="togglePause()" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">Pause [P]</button>
         </div>
         <div id="wanted-level" class="stars"><span id="s1">★</span><span id="s2">★</span><span id="s3">★</span><span id="s4">★</span><span id="s5">★</span></div>
         <div id="objective-text">MISSION 1: ROB THE BANK</div>
@@ -2015,6 +2015,32 @@
       updateBlockCounter(); updateHotbar(); updateHUD();
     }
 
+    window.toggleBuildMode = function() {
+      if (totalBlocks <= 0) return;
+      if (buildMode) {
+        buildMode = false;
+        if (playerWeapons.length > 0) {
+          weaponIndex = 0;
+          let w = playerWeapons[0];
+          currentWeapon = w.id; player.projSpeed = w.projSpeed; player.projSize = w.projSize; player.projColor = w.projColor;
+          applyWeaponVisualForType(w.id);
+        }
+        showFloatingText('BUILD MODE OFF', player.pos);
+      } else {
+        weaponIndex = -1; buildMode = true;
+        if (!blockInventory[selectedBlockType] || blockInventory[selectedBlockType] <= 0) {
+          for (let i = 0; i < hotbarSlots.length; i++) {
+            if (blockInventory[hotbarSlots[i]] > 0) { hotbarIndex = i; selectedBlockType = hotbarSlots[i]; break; }
+          }
+        } else {
+          let idx = hotbarSlots.indexOf(selectedBlockType);
+          if (idx >= 0) hotbarIndex = idx;
+        }
+        showFloatingText('BUILD MODE', player.pos);
+      }
+      updateBlockCounter(); updateHotbar(); updateHUD();
+    };
+
     function addWeapon(weaponId) {
       if (playerWeapons.find(w => w.id === weaponId)) return; // Already have it
       let def = WEAPON_DEFS[weaponId];
@@ -2299,6 +2325,13 @@
     // Hotbar management
     function updateHotbar() {
       let bar = document.getElementById('hotbar');
+      // Show/hide desktop build button
+      let dbBtn = document.getElementById('desktop-build-btn');
+      if (dbBtn && !isMobileDevice) {
+        dbBtn.style.display = totalBlocks > 0 ? 'inline-block' : 'none';
+        dbBtn.innerText = buildMode ? 'Build ON [Shift]' : 'Build [Shift]';
+        dbBtn.style.background = buildMode ? 'rgba(255,204,0,0.6)' : 'rgba(255,204,0,0.3)';
+      }
       if (!bar || totalBlocks <= 0) {
         if (bar) bar.style.display = 'none';
         return;
@@ -2306,6 +2339,17 @@
       // Only show hotbar when in build mode
       if (!buildMode) { bar.style.display = 'none'; return; }
       bar.style.display = 'flex';
+      // Show navigation labels on desktop
+      let navLabels = document.getElementById('hotbar-nav-labels');
+      if (!navLabels && !isMobileDevice) {
+        navLabels = document.createElement('div');
+        navLabels.id = 'hotbar-nav-labels';
+        navLabels.style.cssText = 'position:fixed; bottom:62px; left:50%; transform:translateX(-50%); z-index:50; display:flex; gap:8px; pointer-events:none;';
+        navLabels.innerHTML = '<span style="background:rgba(255,255,255,0.15); border:1px solid #fff; color:#ffcc00; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold; font-family:sans-serif;">◀ Left [E]</span>' +
+          '<span style="background:rgba(255,255,255,0.15); border:1px solid #fff; color:#ffcc00; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold; font-family:sans-serif;">Right [F] ▶</span>';
+        document.body.appendChild(navLabels);
+      }
+      if (navLabels) navLabels.style.display = buildMode ? 'flex' : 'none';
       let slots = bar.children;
       for (let i = 0; i < 9; i++) {
         let slot = slots[i];
