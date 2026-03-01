@@ -374,12 +374,17 @@
       display: none;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
+      padding-top: 40px;
+      padding-bottom: 40px;
       color: white;
       pointer-events: auto;
       font-family: 'Segoe UI', Tahoma, sans-serif;
       -webkit-transform: translateZ(0);
       transform: translateZ(0);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      box-sizing: border-box;
     }
 
     .ms-title {
@@ -1292,8 +1297,8 @@
     const ZONE_RURAL_R = 1000;
     const AIRPORT_X = 350;
     const AIRPORT_Z = -300;
-    const ISLAND_X = -550;
-    const ISLAND_Z = 550;
+    const ISLAND_X = -400;
+    const ISLAND_Z = 400;
 
     function getZone(wx, wz) {
       let dist = Math.sqrt(wx * wx + wz * wz);
@@ -1308,8 +1313,21 @@
       return 'OCEAN';
     }
     const TYPES = {
-      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25, YELLOW: 26, GREEN: 27, STONE: 28, IRON_ORE: 29, COAL_ORE: 30, DIAMOND_ORE: 31
+      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25, YELLOW: 26, GREEN: 27, STONE: 28, IRON_ORE: 29, COAL_ORE: 30, DIAMOND_ORE: 31, SNOW: 32, SAND: 33
     };
+    // Biome system: determines ground type based on world position
+    function getBiome(wx, wz) {
+      // Snow: northeast corner (positive x, negative z)
+      if (wx > 500 && wz < -500) return 'SNOW';
+      if (wx > 400 && wz < -400) { let blend = Math.min((wx-400)/100, (-wz-400)/100); if (blend > 0.5) return 'SNOW'; }
+      // Desert: southeast corner (positive x, positive z)
+      if (wx > 500 && wz > 500) return 'DESERT';
+      if (wx > 400 && wz > 400) { let blend = Math.min((wx-400)/100, (wz-400)/100); if (blend > 0.5) return 'DESERT'; }
+      // Mountain: southwest area
+      let mtDist = Math.sqrt((wx + 600) * (wx + 600) + (wz + 200) * (wz + 200));
+      if (mtDist < 120) return 'MOUNTAIN';
+      return 'NORMAL';
+    }
     const MATERIALS = {};
     const MAX_PARTICLES = 300;
     
@@ -1359,7 +1377,7 @@
     let selectedBlockType = TYPES.BRICK;
     let totalBlocks = 0;
     const BLOCK_NAMES = { [TYPES.GRASS]: 'Grass', [TYPES.BRICK]: 'Brick', [TYPES.GLASS]: 'Glass', [TYPES.CONCRETE]: 'Concrete', [TYPES.GOLD]: 'Gold', [TYPES.WOOD]: 'Wood', [TYPES.DIRT]: 'Dirt', [TYPES.STEEL]: 'Steel', [TYPES.LEAVES]: 'Leaves', [TYPES.RED]: 'Red', [TYPES.BLUE]: 'Blue', [TYPES.WHITE]: 'White', [TYPES.YELLOW]: 'Yellow', [TYPES.GREEN]: 'Green', [TYPES.STONE]: 'Stone', [TYPES.IRON_ORE]: 'Iron Ore', [TYPES.COAL_ORE]: 'Coal Ore', [TYPES.DIAMOND_ORE]: 'Diamond Ore' };
-    const BLOCK_COLORS = { [TYPES.GRASS]: '#4caf50', [TYPES.BRICK]: '#8b4513', [TYPES.GLASS]: '#87ceeb', [TYPES.CONCRETE]: '#999', [TYPES.GOLD]: '#ffd700', [TYPES.WOOD]: '#8b6914', [TYPES.DIRT]: '#6b4226', [TYPES.STEEL]: '#bbb', [TYPES.LEAVES]: '#2d6b30', [TYPES.RED]: '#e53935', [TYPES.BLUE]: '#1e88e5', [TYPES.WHITE]: '#eee', [TYPES.YELLOW]: '#fdd835', [TYPES.GREEN]: '#43a047', [TYPES.STONE]: '#808080', [TYPES.IRON_ORE]: '#c8a882', [TYPES.COAL_ORE]: '#333', [TYPES.DIAMOND_ORE]: '#4de8e0' };
+    const BLOCK_COLORS = { [TYPES.GRASS]: '#4caf50', [TYPES.BRICK]: '#8b4513', [TYPES.GLASS]: '#87ceeb', [TYPES.CONCRETE]: '#999', [TYPES.GOLD]: '#ffd700', [TYPES.WOOD]: '#8b6914', [TYPES.DIRT]: '#6b4226', [TYPES.STEEL]: '#bbb', [TYPES.LEAVES]: '#2d6b30', [TYPES.RED]: '#e53935', [TYPES.BLUE]: '#1e88e5', [TYPES.WHITE]: '#eee', [TYPES.YELLOW]: '#fdd835', [TYPES.GREEN]: '#43a047', [TYPES.STONE]: '#808080', [TYPES.IRON_ORE]: '#c8a882', [TYPES.COAL_ORE]: '#333', [TYPES.DIAMOND_ORE]: '#4de8e0', [TYPES.SNOW]: '#f0f0ff', [TYPES.SAND]: '#e8d68a' };
     const BLOCK_ICONS = {};
     let blockPickups = []; // Mini rotating block pickups in world
     let ghostBlock = null; // Preview mesh for block placement
@@ -1370,7 +1388,7 @@
     let hotbarIndex = 0;
     let blocksPlacedForMission = 0; // Track blocks placed for building mission
     const BARRICADE_POS = new THREE.Vector3(-144, 1, 6); // Road crossing point for barricade mission
-    let bankMarkerGroup, storeMarkerGroup, carparkMarkerGroup, alleyMarkerGroup, airportMarkerGroup, waypointArrow3D, bankGlow, storeGlow;
+    let bankMarkerGroup, storeMarkerGroup, carparkMarkerGroup, alleyMarkerGroup, airportMarkerGroup, islandMarkerGroup, barricadeMarkerGroup, waypointArrow3D, bankGlow, storeGlow;
     let currentPhoneMessage = "";
     let bankCashWad = null, bankTellerNPC = null;
     let pickups = [];
@@ -1469,18 +1487,19 @@
         ]},
       { id: 7, name: 'MASTER BUILDER', objective: 'MISSION 8: BUILD A BARRICADE',
         target: [-144, 1, 6], reward: 30000,
-        phoneStart: "Boss: The cops keep coming down that main road. I need you to build a barricade! Collect blocks by destroying buildings, then place 20 blocks to build a wall across the road.",
+        phoneStart: "Boss: The cops keep coming down that main road. I need you to build a barricade! Go to the yellow marker, collect blocks by destroying buildings, then place 20 blocks to block the road.",
         rewards: [
           { icon: '💰', text: '+$30,000 Builder Pay!', action: 'cash30k' },
-          { icon: '🧱', text: 'Master Builder!', action: 'master_builder' },
+          { icon: '🚗', text: 'Indestructible Flying Car!', action: 'flycar_reward' },
           { icon: '🏗️', text: '+50 Free Blocks!', action: 'free_blocks' }
         ]},
       { id: 8, name: 'BUILD YOUR HOME', objective: 'FINAL MISSION: BUILD YOUR MANSION',
         target: [ISLAND_X, 1, ISLAND_Z], reward: 100000,
-        phoneStart: "Boss: You've earned it, kid. That island is yours now. Time to build yourself a mansion fit for a gangster! Get to the island, switch to Build Mode, and place 40 blocks to build your dream home. Use E and F to pick different block types!",
+        phoneStart: "Boss: You've earned it, kid. That island is yours now. Time to build yourself a mansion fit for a gangster! Get to the island and place 40 blocks. I've left you 5 tanks and 5 planes as a gift!",
         rewards: [
           { icon: '💰', text: '+$100,000 Retirement Fund!', action: 'cash100k' },
           { icon: '🏠', text: 'Gangster Mansion Built!', action: 'mansion' },
+          { icon: '🛩️', text: '5 Planes + 5 Tanks on Island!', action: 'island_vehicles' },
           { icon: '👑', text: 'CRIME LORD STATUS!', action: 'crime_lord' }
         ]}
     ];
@@ -1564,6 +1583,8 @@
       let pauseMissionEl = document.getElementById('pause-mission-text');
       if (pauseMissionEl) pauseMissionEl.innerText = text;
       phone.style.display = 'flex';
+      // Clear any inline position overrides from triggerMissionSuccess
+      phone.style.top = ''; phone.style.bottom = '';
       phone.classList.remove('active');
       void phone.offsetWidth;
       phone.classList.add('active');
@@ -1613,6 +1634,7 @@
     };
 
     window.continueGame = function() {
+      let justCompletedMission = missionIndex;
       document.getElementById('mission-success').style.display = 'none';
       missionIndex++;
       if (missionIndex < MISSIONS.length) {
@@ -1625,6 +1647,20 @@
       isPlaying = true;
       if (!isMobileDevice) renderer.domElement.requestPointerLock();
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
+      // Barricade mission reward: spawn indestructible flying car
+      if (justCompletedMission === 7 && playerInventory.has('flycar_reward')) {
+        let spawnX = player.pos.x + 5, spawnZ = player.pos.z;
+        let v = new Vehicle('CIVILIAN', spawnX, spawnZ, 0x9900ff);
+        v.health = 99999; v.maxHealth = 99999; // Indestructible
+        v.parked = true; v.vel.set(0, 0, 0);
+        v.isFlyingCar = true;
+        v.isIndestructible = true;
+        vehicles.push(v);
+        // Show "hold space to fly" modal
+        setTimeout(() => {
+          showPhoneMessage("Your new flying car is here! Hold SPACE while driving to fly!", 12000);
+        }, 2000);
+      }
     };
 
     function startMission(index) {
@@ -1642,6 +1678,8 @@
       if (carparkMarkerGroup) carparkMarkerGroup.visible = (index === 4);
       if (alleyMarkerGroup) alleyMarkerGroup.visible = (index === 1);
       if (airportMarkerGroup) airportMarkerGroup.visible = (index === 5);
+      if (islandMarkerGroup) islandMarkerGroup.visible = (index >= 5); // Show island marker from plane mission onwards
+      if (barricadeMarkerGroup) barricadeMarkerGroup.visible = (index === 7);
       if (bankCashWad) { bankCashWad.visible = (index === 0); bankCashWad.userData.animating = false; bankCashWad.scale.setScalar(1); }
       // Show phone message for missions after the first (first is handled via pendingPhoneMessage)
       if (index > 0) setTimeout(() => showPhoneMessage(m.phoneStart, 20000), 500);
@@ -1687,6 +1725,13 @@
           let freeTypes = [TYPES.BRICK, TYPES.CONCRETE, TYPES.STEEL, TYPES.WOOD, TYPES.GLASS];
           for (let ft of freeTypes) { blockInventory[ft] = (blockInventory[ft] || 0) + 10; totalBlocks += 10; }
           updateBlockCounter();
+          break;
+        case 'flycar_reward':
+          // Spawn indestructible flying car after modal closes
+          playerInventory.add('flycar_reward');
+          break;
+        case 'island_vehicles':
+          spawnIslandVehicles();
           break;
         case 'cash100k': score += 100000; break;
         case 'mansion': break;
@@ -1868,21 +1913,53 @@
         container.appendChild(ubDiv);
         setTimeout(() => ubDiv.style.opacity = '1', 1000 + stats.length * 400 + 600);
       }
-      // Continue playing button
+      // Boss message about gifts
+      let bossMsg = document.createElement('div');
+      bossMsg.style.cssText = 'margin-top:20px; padding:15px 25px; background:rgba(255,200,0,0.15); border:2px solid #ffd700; border-radius:12px; opacity:0; transition:opacity 0.5s; text-align:center; max-width:85vw;';
+      bossMsg.innerHTML = '<div style="color:#ffd700; font-size:20px; font-weight:bold; margin-bottom:5px;">📱 Boss:</div><div style="color:#fff; font-size:18px;">"I\'ve gifted you 5 planes and 5 tanks to play with. Enjoy your island, kid."</div>';
+      container.appendChild(bossMsg);
+      setTimeout(() => bossMsg.style.opacity = '1', 1000 + stats.length * 400 + 800);
+
+      // Continue playing button - large, green, always visible
       let btn = document.createElement('button');
       btn.className = 'ms-btn';
       btn.innerText = 'KEEP PLAYING';
       btn.style.pointerEvents = 'auto';
+      btn.style.marginBottom = '30px';
+      btn.style.minHeight = '60px';
       let victoryHandler = () => {
         container.style.display = 'none';
         isPaused = false;
         if (!isMobileDevice) renderer.domElement.requestPointerLock();
         if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
+        // Spawn 5 planes and 5 tanks on island
+        spawnIslandVehicles();
+        showPhoneMessage("Boss: Check out your new toys on the island! 5 tanks and 5 planes, all yours.", 12000);
       };
       btn.onclick = victoryHandler;
       btn.addEventListener('touchstart', (e) => { e.preventDefault(); victoryHandler(); });
       container.appendChild(btn);
       setTimeout(() => btn.style.opacity = '1', 1000 + stats.length * 400 + 1000);
+    }
+
+    function spawnIslandVehicles() {
+      // Spawn 5 tanks and 5 planes on the island
+      let tankColors = [0x3b4d2e, 0x556b2f, 0x4a5a3a, 0x2d3b1f, 0x5a6b4a];
+      let planeColors = [0xffffff, 0xcc0000, 0x0044cc, 0xffcc00, 0x00cc44];
+      for (let i = 0; i < 5; i++) {
+        // Tanks in a row near mansion
+        let tx = ISLAND_X - 30 + i * 8;
+        let tz = ISLAND_Z - 20;
+        let tank = new Vehicle('TANK', tx, tz, tankColors[i]);
+        tank.parked = true; tank.vel.set(0, 0, 0);
+        vehicles.push(tank);
+        // Planes along the runway
+        let px = ISLAND_X - 40 + i * 18;
+        let pz = ISLAND_Z + 8;
+        let plane = new Vehicle('PLANE', px, pz, planeColors[i]);
+        plane.parked = true; plane.vel.set(0, 0, 0);
+        vehicles.push(plane);
+      }
     }
 
     // --- Store System ---
@@ -1946,6 +2023,20 @@
         playerInventory.add('rocket');
         applyWeaponVisual('rocket');
         showFloatingText('+Rocket Launcher (Free)', player.pos);
+      }
+      // Always ensure rocket is properly in weapon list and equipped after store
+      if (playerInventory.has('rocket')) {
+        addWeapon('rocket');
+        // If not in build mode, equip rocket
+        if (!buildMode) {
+          currentWeapon = 'rocket';
+          weaponIndex = playerWeapons.findIndex(w => w.id === 'rocket');
+          if (weaponIndex >= 0) {
+            let w = playerWeapons[weaponIndex];
+            player.projSpeed = w.projSpeed; player.projSize = w.projSize; player.projColor = w.projColor;
+          }
+          applyWeaponVisualForType('rocket');
+        }
       }
     };
 
@@ -2478,7 +2569,12 @@
         return;
       }
       // Only show hotbar when in build mode
-      if (!buildMode) { bar.style.display = 'none'; return; }
+      if (!buildMode) {
+        bar.style.display = 'none';
+        let nl = document.getElementById('hotbar-nav-labels');
+        if (nl) nl.style.display = 'none';
+        return;
+      }
       bar.style.display = 'flex';
       // Show navigation labels on desktop
       let navLabels = document.getElementById('hotbar-nav-labels');
@@ -2887,9 +2983,14 @@
       }
       damageAtLocal(localPos, radius, worldMatrix, baseVel) {
         let hits = 0, m = new THREE.Matrix4(), p = new THREE.Vector3();
+        // Cap block removal at 50% of total blocks
+        let totalActive = this.blocks.filter(b => b.active).length;
+        let minBlocks = Math.ceil(this.blocks.length * 0.5);
         for (let b of this.blocks) {
+          if (totalActive <= minBlocks) break; // Don't remove more than 50%
           if (b.active && b.pos.distanceTo(localPos) < radius) {
             b.active = false; m.makeScale(0, 0, 0); this.mesh.setMatrixAt(b.id, m); hits++;
+            totalActive--;
             if (worldMatrix) { p.copy(b.pos).applyMatrix4(worldMatrix); spawnPhysicsParticle(p.x, p.y, p.z, b.color, baseVel); }
           }
         }
@@ -3184,6 +3285,8 @@
       MATERIALS[TYPES.IRON_ORE] = buildPBRMaterial(createTex('IRON_ORE'));
       MATERIALS[TYPES.COAL_ORE] = buildPBRMaterial(createTex('COAL_ORE'));
       MATERIALS[TYPES.DIAMOND_ORE] = buildPBRMaterial(createTex('DIAMOND_ORE'), { emissive: 0x2299aa, emissiveIntensity: 0.2 });
+      MATERIALS[TYPES.SNOW] = new THREE.MeshStandardMaterial({ color: 0xf0f0ff, roughness: 0.9, metalness: 0.0 });
+      MATERIALS[TYPES.SAND] = new THREE.MeshStandardMaterial({ color: 0xe8d68a, roughness: 0.95, metalness: 0.0 });
 
       // Build block icon data URLs for 2D hotbar display
       for (let typeKey in TYPES) {
@@ -3394,6 +3497,26 @@
       carparkPillar.position.set(0, 75, 0); carparkMarkerGroup.add(carparkPillar);
       carparkMarkerGroup.visible = false;
       scene.add(carparkMarkerGroup);
+
+      // Barricade Marker (yellow)
+      barricadeMarkerGroup = new THREE.Group();
+      barricadeMarkerGroup.position.copy(BARRICADE_POS).setY(0);
+      let barricadeCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xaa8800, emissiveIntensity: 0.8 }));
+      barricadeCrystal.position.set(0, 15, 0); barricadeMarkerGroup.add(barricadeCrystal);
+      let barricadePillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
+      barricadePillar.position.set(0, 75, 0); barricadeMarkerGroup.add(barricadePillar);
+      barricadeMarkerGroup.visible = false;
+      scene.add(barricadeMarkerGroup);
+
+      // Island Castle Marker (gold/purple) - visible after plane mission
+      islandMarkerGroup = new THREE.Group();
+      islandMarkerGroup.position.set(ISLAND_X, 0, ISLAND_Z + 18);
+      let islandCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xcc8800, emissiveIntensity: 1.0 }));
+      islandCrystal.position.set(0, 20, 0); islandMarkerGroup.add(islandCrystal);
+      let islandPillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0xffd700, transparent: true, opacity: 0.2, blending: THREE.AdditiveBlending, depthWrite: false }));
+      islandPillar.position.set(0, 75, 0); islandMarkerGroup.add(islandPillar);
+      islandMarkerGroup.visible = false;
+      scene.add(islandMarkerGroup);
 
       // Pickup pool (cash drops)
       let pickupGeo = new THREE.BoxGeometry(0.7, 0.15, 1.0);
@@ -3709,6 +3832,9 @@
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {
           for (let lz = 0; lz < CHUNK_SIZE; lz++) {
             let wx = startX + lx, wz = startZ + lz;
+            let biome = getBiome(wx, wz);
+            let groundType = biome === 'SNOW' ? TYPES.SNOW : (biome === 'DESERT' ? TYPES.SAND : TYPES.GRASS);
+            let subSoilType = biome === 'SNOW' ? TYPES.SNOW : (biome === 'DESERT' ? TYPES.SAND : TYPES.DIRT);
             let noise = smoothNoise(wx * 0.02, wz * 0.02);
             let rxMod = Math.abs(wx) % CHUNK_SIZE, rzMod = Math.abs(wz) % CHUNK_SIZE;
             let isXRoad = rxMod < ROAD_WIDTH, isZRoad = rzMod < ROAD_WIDTH;
@@ -3730,42 +3856,93 @@
             } else if (zone === 'ISLAND') {
               let idDist = Math.sqrt((wx - ISLAND_X) * (wx - ISLAND_X) + (wz - ISLAND_Z) * (wz - ISLAND_Z));
               // Bridge from island to mainland (goes east, z = ISLAND_Z, from x = ISLAND_X+60 to ISLAND_X+200)
-              let onBridge = Math.abs(wz - ISLAND_Z) < 4 && wx > ISLAND_X + 55 && wx < ISLAND_X + 250;
+              let onBridge = Math.abs(wz - ISLAND_Z) < 4 && wx > ISLAND_X + 50 && wx < ISLAND_X + 250;
               if (onBridge) {
                 isWater = false;
               } else {
-                isWater = idDist > 70 || (idDist > 58 && noise < 0.5);
+                // More water - smaller island land area
+                isWater = idDist > 55 || (idDist > 45 && noise < 0.55);
               }
-              // Island runway (along x-axis through center)
-              let islandRunway = Math.abs(wz - ISLAND_Z) < 4 && wx > ISLAND_X - 50 && wx < ISLAND_X + 50 && idDist < 65;
-              // Island mansion
-              let mxOff = wx - (ISLAND_X - 15), mzOff = wz - (ISLAND_Z + 20);
-              let isMansion = mxOff >= 0 && mxOff <= 20 && mzOff >= 0 && mzOff <= 16 && idDist < 65;
-              let isMansionWall = isMansion && (mxOff === 0 || mxOff === 20 || mzOff === 0 || mzOff === 16);
-              let isMansionDoor = isMansion && mzOff === 0 && mxOff >= 8 && mxOff <= 12;
-              // Island fountain
-              let fxOff = wx - ISLAND_X, fzOff = wz - (ISLAND_Z + 10);
+              // Island runway (along x-axis through south side)
+              let islandRunway = Math.abs(wz - ISLAND_Z) < 4 && wx > ISLAND_X - 45 && wx < ISLAND_X + 45 && idDist < 50;
+              // Castle/Mansion - much larger (30x24), positioned in center-north of island
+              let castleX = ISLAND_X - 15, castleZ = ISLAND_Z + 12;
+              let cxOff = wx - castleX, czOff = wz - castleZ;
+              let isCastle = cxOff >= 0 && cxOff <= 30 && czOff >= 0 && czOff <= 24 && idDist < 50;
+              let isCastleWall = isCastle && (cxOff === 0 || cxOff === 30 || czOff === 0 || czOff === 24);
+              let isCastleDoor = isCastle && czOff === 0 && cxOff >= 13 && cxOff <= 17;
+              // Corner towers
+              let isCornerTower = isCastle && ((cxOff <= 3 || cxOff >= 27) && (czOff <= 3 || czOff >= 21));
+              // Island mountain - northeast area of island
+              let mtX = ISLAND_X + 25, mtZ = ISLAND_Z - 20;
+              let mtIslandDist = Math.sqrt((wx - mtX) * (wx - mtX) + (wz - mtZ) * (wz - mtZ));
+              let isIslandMt = mtIslandDist < 18 && idDist < 50;
+              // Fountain/courtyard in front of castle
+              let fxOff = wx - (ISLAND_X), fzOff = wz - (ISLAND_Z + 8);
               let fountainDist = Math.sqrt(fxOff * fxOff + fzOff * fzOff);
+
               if (!isWater && islandRunway) {
                 this.setBlock(lx, 0, lz, TYPES.ROAD);
                 if (Math.abs(wz - ISLAND_Z) < 1 && Math.abs(wx - ISLAND_X) % 10 < 5) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                 continue;
-              } else if (!isWater && isMansion) {
-                this.setBlock(lx, 0, lz, TYPES.GOLD);
-                for (let my = 1; my <= 8; my++) {
-                  if (isMansionDoor && my <= 4) continue;
-                  if (isMansionWall) this.setBlock(lx, my, lz, my > 5 ? TYPES.GLASS_BLUE : TYPES.WHITE);
-                  else if (my === 1) this.setBlock(lx, my, lz, TYPES.GOLD);
+              } else if (!isWater && isIslandMt) {
+                // Island mountain
+                let mtH = Math.floor((1 - mtIslandDist / 18) * 30);
+                this.setBlock(lx, 0, lz, TYPES.GRASS);
+                for (let my = 1; my <= mtH; my++) {
+                  if (my === mtH && mtH > 20) this.setBlock(lx, my, lz, TYPES.SNOW);
+                  else if (my === mtH) this.setBlock(lx, my, lz, TYPES.GRASS);
+                  else if (my > mtH - 3) this.setBlock(lx, my, lz, TYPES.STONE);
+                  else this.setBlock(lx, my, lz, TYPES.DIRT);
                 }
-                // Peaked roof
-                if (!isMansionWall) {
-                  let centerOff = Math.abs(mxOff - 10);
-                  let roofH = 12 - Math.floor(centerOff / 2);
-                  for (let ry = 9; ry <= roofH; ry++) {
-                    if (mxOff === 0 || mxOff === 20 || mzOff === 0 || mzOff === 16) this.setBlock(lx, ry, lz, TYPES.BRICK_RED);
+                continue;
+              } else if (!isWater && isCastle) {
+                // Castle floor
+                this.setBlock(lx, 0, lz, TYPES.GOLD);
+                let wallH = isCornerTower ? 16 : 12;
+                for (let my = 1; my <= wallH; my++) {
+                  if (isCastleDoor && my <= 5) continue;
+                  if (isCornerTower) {
+                    this.setBlock(lx, my, lz, my > wallH - 2 ? TYPES.CONCRETE_DARK : TYPES.STONE);
+                  } else if (isCastleWall) {
+                    let isWin = my >= 4 && my <= 6 && ((cxOff % 4 === 0) || (czOff % 4 === 0));
+                    this.setBlock(lx, my, lz, isWin ? TYPES.GLASS_BLUE : TYPES.STONE);
+                  } else if (my === 1) {
+                    this.setBlock(lx, my, lz, TYPES.GOLD); // gold floor
+                  } else if (my === 6) {
+                    this.setBlock(lx, my, lz, TYPES.WOOD); // second floor
                   }
                 }
-                this.setBlock(lx, 9, lz, TYPES.CONCRETE);
+                // Crenellations (battlement pattern on top)
+                if (isCastleWall && !isCornerTower) {
+                  let crenelPos = (cxOff + czOff) % 3;
+                  if (crenelPos === 0) this.setBlock(lx, wallH + 1, lz, TYPES.STONE);
+                }
+                // Tower peaked caps
+                if (isCornerTower) {
+                  this.setBlock(lx, wallH + 1, lz, TYPES.STONE);
+                  let tCenterX = cxOff <= 3 ? 1.5 : 28.5;
+                  let tCenterZ = czOff <= 3 ? 1.5 : 22.5;
+                  let tDist = Math.abs(cxOff - tCenterX) + Math.abs(czOff - tCenterZ);
+                  if (tDist <= 1) {
+                    this.setBlock(lx, wallH + 2, lz, TYPES.BRICK_RED);
+                    this.setBlock(lx, wallH + 3, lz, TYPES.BRICK_RED);
+                  }
+                }
+                // Interior: throne room, furniture
+                if (!isCastleWall && !isCornerTower) {
+                  // Throne at back of castle
+                  if (czOff >= 20 && czOff <= 22 && cxOff >= 14 && cxOff <= 16) {
+                    this.setBlock(lx, 2, lz, TYPES.GOLD);
+                    this.setBlock(lx, 3, lz, TYPES.GOLD);
+                    if (cxOff === 15) this.setBlock(lx, 4, lz, TYPES.GOLD);
+                  }
+                  // Red carpet to throne
+                  if (cxOff === 15 && czOff > 0 && czOff < 20) {
+                    this.setBlock(lx, 1, lz, TYPES.RED);
+                  }
+                }
+                this.setBlock(lx, wallH, lz, isCastleWall ? TYPES.STONE : TYPES.CONCRETE); // roof
                 continue;
               } else if (!isWater && fountainDist < 5) {
                 this.setBlock(lx, 0, lz, TYPES.GRASS);
@@ -3907,10 +4084,12 @@
               // Standard terrain
               // More green spaces - lower thresholds mean more parks/gardens
               let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.25) || (zone === 'SUBURBAN' && noise > 0.45) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
+              // Mountain biome: always nature ground, no sidewalks/concrete
+              if (biome === 'MOUNTAIN') isPark = true;
               if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
-                this.setBlock(lx, 0, lz, isPark ? TYPES.GRASS : TYPES.CONCRETE);
+                this.setBlock(lx, 0, lz, isPark ? groundType : TYPES.CONCRETE);
                 // === CUL-DE-SAC SAFE HOUSE ===
                 if (isAlley && !isRoad) {
                   let culCX = 24, culHW = 3, culSZ = ROAD_WIDTH, culEZ = 38;
@@ -3974,7 +4153,7 @@
               // Carpark uses expanded footprint — override canBuild
               if (isCarpark) canBuild = !isRoad;
 
-              if (canBuild && buildingHeight > 0 && !isPark) {
+              if (canBuild && buildingHeight > 0 && !isPark && biome !== 'MOUNTAIN') {
                 // Building footprint - smaller for suburban
                 let xOffset = Math.floor((hash2D(this.cx, 1) % 1) * 3), zOffset = Math.floor((hash2D(1, this.cz) % 1) * 3);
                 let wShrink = Math.floor((hash2D(this.cx, 2) % 1) * 4), dShrink = Math.floor((hash2D(2, this.cz) % 1) * 4);
@@ -4221,8 +4400,8 @@
                     let subHill = Math.floor(smoothNoise(wx * 0.04, wz * 0.04) * 4);
                     let subHill2 = Math.floor(smoothNoise(wx * 0.08 + 30, wz * 0.08 + 30) * 2);
                     subHill = Math.max(0, subHill + subHill2);
-                    for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? TYPES.GRASS : TYPES.DIRT);
-                    if (subHill === 0) this.setBlock(lx, 0, lz, TYPES.GRASS);
+                    for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? groundType : subSoilType);
+                    if (subHill === 0) this.setBlock(lx, 0, lz, groundType);
 
                     let subType = hash2D(this.cx * 13, this.cz * 17);
                     // Front yard fence along sidewalk edge
@@ -4254,6 +4433,40 @@
                         }
                         // Silo dome
                         this.setBlock(lx, subHill + 9, lz, TYPES.STEEL);
+                      }
+                      // Farm animals - cows (white + black blocks), sheep (white), pigs (pink)
+                      let animalHash = hash2D(wx * 3 + 77, wz * 3 + 77);
+                      if (animalHash > 0.992 && lx > margin + 6 && lx < CHUNK_SIZE - margin - 6 && lz > margin + 6 && lz < CHUNK_SIZE - margin - 6) {
+                        let animalType = Math.floor(animalHash * 1000) % 3;
+                        let sh = subHill + 1;
+                        if (animalType === 0) {
+                          // Cow: 3 blocks long, 2 tall, black & white
+                          this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, sh, lz, TYPES.WHITE);
+                          this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+2, sh+1, lz, TYPES.CONCRETE_DARK); // head
+                        } else if (animalType === 1) {
+                          // Sheep: 2 blocks long, 2 tall, white fluffy
+                          this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.WHITE);
+                          this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+1, sh+1, lz, TYPES.CONCRETE_DARK); // face
+                        } else {
+                          // Pig: 2 blocks long, 1.5 tall, pink
+                          this.setBlock(lx, sh, lz, TYPES.PLASTER_WARM); this.setBlock(lx+1, sh, lz, TYPES.PLASTER_WARM);
+                          this.setBlock(lx+1, sh+1, lz, TYPES.PLASTER_WARM); // head
+                        }
+                      }
+                      // Tractor (red vehicle-like block structure)
+                      if (lx === CHUNK_SIZE - margin - 4 && lz === CHUNK_SIZE - margin - 4) {
+                        this.setBlock(lx, subHill + 1, lz, TYPES.CONCRETE_DARK); // wheels
+                        this.setBlock(lx+1, subHill + 1, lz, TYPES.CONCRETE_DARK);
+                        this.setBlock(lx, subHill + 2, lz, TYPES.RED); // body
+                        this.setBlock(lx+1, subHill + 2, lz, TYPES.RED);
+                        this.setBlock(lx, subHill + 3, lz, TYPES.GLASS); // cab
+                      }
+                      // Fence around farm perimeter
+                      if ((lx === margin + 2 || lx === CHUNK_SIZE - margin - 2) && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2 && lz % 2 === 0) {
+                        this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
+                      }
+                      if ((lz === margin + 2 || lz === CHUNK_SIZE - margin - 2) && lx > margin + 2 && lx < CHUNK_SIZE - margin - 2 && lx % 2 === 0) {
+                        this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
                       }
                     }
 
@@ -4289,17 +4502,32 @@
                       }
                     }
 
-                    // Varied yard trees (different sizes and types)
+                    // Varied yard trees (different sizes and types) - biome-specific
                     if (hash2D(wx + 10, wz + 10) > 0.975) {
-                      let treeType = hash2D(wx + 50, wz + 50);
-                      let th = treeType > 0.5 ? (4 + Math.floor(hash2D(wx + 15, wz + 15) * 3)) : (2 + Math.floor(hash2D(wx + 15, wz + 15) * 2));
-                      for (let y = subHill + 1; y <= subHill + th; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
-                      let cr = treeType > 0.5 ? 2 : 1;
-                      for (let ox = -cr; ox <= cr; ox++) for (let oz = -cr; oz <= cr; oz++) {
-                        if (Math.abs(ox) + Math.abs(oz) <= cr + 1 && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
-                          this.setBlock(lx + ox, subHill + th, lz + oz, TYPES.LEAVES);
-                          this.setBlock(lx + ox, subHill + th + 1, lz + oz, TYPES.LEAVES);
+                      if (biome === 'DESERT') {
+                        // Cactus
+                        let cH = 3 + Math.floor(hash2D(wx + 15, wz + 15) * 3);
+                        for (let y = subHill + 1; y <= subHill + cH; y++) this.setBlock(lx, y, lz, TYPES.GREEN);
+                        // Cactus arms
+                        if (cH > 3 && lx > 0 && lx < CHUNK_SIZE - 1) {
+                          this.setBlock(lx + 1, subHill + cH - 1, lz, TYPES.GREEN);
+                          this.setBlock(lx + 1, subHill + cH, lz, TYPES.GREEN);
+                          if (cH > 4) { this.setBlock(lx - 1, subHill + cH - 2, lz, TYPES.GREEN); this.setBlock(lx - 1, subHill + cH - 1, lz, TYPES.GREEN); }
                         }
+                      } else {
+                        let treeType = hash2D(wx + 50, wz + 50);
+                        let th = treeType > 0.5 ? (4 + Math.floor(hash2D(wx + 15, wz + 15) * 3)) : (2 + Math.floor(hash2D(wx + 15, wz + 15) * 2));
+                        for (let y = subHill + 1; y <= subHill + th; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
+                        let cr = treeType > 0.5 ? 2 : 1;
+                        let leafType = biome === 'SNOW' ? TYPES.WHITE : TYPES.LEAVES;
+                        for (let ox = -cr; ox <= cr; ox++) for (let oz = -cr; oz <= cr; oz++) {
+                          if (Math.abs(ox) + Math.abs(oz) <= cr + 1 && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
+                            this.setBlock(lx + ox, subHill + th, lz + oz, leafType);
+                            this.setBlock(lx + ox, subHill + th + 1, lz + oz, leafType);
+                          }
+                        }
+                        // Snow on ground under trees
+                        if (biome === 'SNOW') this.setBlock(lx, subHill, lz, TYPES.SNOW);
                       }
                     }
 
@@ -4316,46 +4544,103 @@
                     }
                   }
                 }
-              } else if (isPark || zone === 'RURAL' || zone === 'ISLAND') {
+              } else if (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN') {
                 // Nature generation - larger terrain hills
                 let hillScale = zone === 'RURAL' ? 12 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 5 : 3));
+
+                // Mountain biome: massive terrain
+                if (biome === 'MOUNTAIN') {
+                  let mtDist = Math.sqrt((wx + 600) * (wx + 600) + (wz + 200) * (wz + 200));
+                  let mtFactor = Math.max(0, 1 - mtDist / 120); // 1 at center, 0 at edge
+                  hillScale = 15 + mtFactor * 55; // Up to 70 blocks tall at center
+                }
+
                 let hill = Math.floor(smoothNoise(wx * 0.06, wz * 0.06) * hillScale);
                 // Extra hills using secondary noise for more terrain variation
                 let hill2 = Math.floor(smoothNoise(wx * 0.12 + 50, wz * 0.12 + 50) * (hillScale * 0.5));
                 hill = Math.max(hill, hill2);
-                for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, hy === hill ? TYPES.GRASS : TYPES.DIRT);
+
+                // Mountain biome: use stone and snow caps
+                if (biome === 'MOUNTAIN') {
+                  for (let hy = 1; hy <= hill; hy++) {
+                    if (hy === hill && hill > 40) this.setBlock(lx, hy, lz, TYPES.SNOW); // Snow cap
+                    else if (hy === hill && hill > 25) this.setBlock(lx, hy, lz, hy % 2 === 0 ? TYPES.SNOW : TYPES.STONE); // Partial snow
+                    else if (hy === hill) this.setBlock(lx, hy, lz, TYPES.GRASS);
+                    else if (hy > hill - 3) this.setBlock(lx, hy, lz, TYPES.STONE);
+                    else this.setBlock(lx, hy, lz, TYPES.DIRT);
+                  }
+                  // Boulder details on mountains
+                  if (hill > 15 && hash2D(wx * 7, wz * 7) > 0.97) {
+                    this.setBlock(lx, hill + 1, lz, TYPES.STONE);
+                    if (hash2D(wx * 11, wz * 11) > 0.5) this.setBlock(lx, hill + 2, lz, TYPES.STONE);
+                  }
+                } else {
+                  for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, hy === hill ? groundType : subSoilType);
+                }
 
                 // Waterfalls on tall hills
-                if (hill >= 5 && (zone === 'RURAL' || zone === 'SUBURBAN')) {
+                if (hill >= 5 && (zone === 'RURAL' || zone === 'SUBURBAN' || biome === 'MOUNTAIN')) {
                   let adjHill = Math.floor(smoothNoise((wx + 1) * 0.06, wz * 0.06) * hillScale);
                   if (adjHill < hill - 2 && hash2D(wx * 3, wz * 3) > 0.92) {
                     for (let wy = adjHill + 1; wy <= hill; wy++) this.setBlock(lx, wy, lz, TYPES.WATER);
                   }
                 }
 
-                // Trees - sparse in open areas
+                // Trees - biome-specific
                 let treeChance = zone === 'RURAL' ? 0.975 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.98 : 0.95));
+                if (biome === 'MOUNTAIN') treeChance = hill > 30 ? 1.0 : 0.99; // Very sparse on mountains, none above treeline
+                if (biome === 'DESERT') treeChance = 0.995; // Very sparse in desert
+
                 if (hash2D(wx, wz) > treeChance) {
-                  let treeH = 4 + Math.floor(hash2D(wx + 5, wz + 5) * 5);
-                  for (let y = hill + 1; y <= hill + treeH; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
-                  let canopyR = treeH > 6 ? 3 : 2;
-                  for (let y = hill + treeH - 2; y <= hill + treeH + 2; y++) {
-                    let r = (y === hill + treeH + 2) ? 1 : canopyR;
-                    for (let ox = -r; ox <= r; ox++) {
-                      for (let oz = -r; oz <= r; oz++) {
-                        if (Math.abs(ox) + Math.abs(oz) < r + canopyR && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
-                          let leafWX = wx + ox, leafWZ = wz + oz;
-                          let isLeafInRoad = (Math.abs(leafWX) % CHUNK_SIZE < ROAD_WIDTH) || (Math.abs(leafWZ) % CHUNK_SIZE < ROAD_WIDTH);
-                          if (!isLeafInRoad) this.setBlock(lx + ox, y, lz + oz, TYPES.LEAVES);
+                  if (biome === 'DESERT') {
+                    // Cactus in desert
+                    let cH = 3 + Math.floor(hash2D(wx + 5, wz + 5) * 4);
+                    for (let y = hill + 1; y <= hill + cH; y++) this.setBlock(lx, y, lz, TYPES.GREEN);
+                    if (cH > 3 && lx > 0 && lx < CHUNK_SIZE - 1) {
+                      this.setBlock(lx + 1, hill + cH - 1, lz, TYPES.GREEN);
+                      this.setBlock(lx + 1, hill + cH, lz, TYPES.GREEN);
+                      if (cH > 4) { this.setBlock(lx - 1, hill + cH - 2, lz, TYPES.GREEN); this.setBlock(lx - 1, hill + cH - 1, lz, TYPES.GREEN); }
+                    }
+                  } else {
+                    let treeH = 4 + Math.floor(hash2D(wx + 5, wz + 5) * 5);
+                    for (let y = hill + 1; y <= hill + treeH; y++) this.setBlock(lx, y, lz, TYPES.WOOD);
+                    let canopyR = treeH > 6 ? 3 : 2;
+                    let leafType = biome === 'SNOW' ? TYPES.WHITE : TYPES.LEAVES;
+                    for (let y = hill + treeH - 2; y <= hill + treeH + 2; y++) {
+                      let r = (y === hill + treeH + 2) ? 1 : canopyR;
+                      for (let ox = -r; ox <= r; ox++) {
+                        for (let oz = -r; oz <= r; oz++) {
+                          if (Math.abs(ox) + Math.abs(oz) < r + canopyR && lx + ox >= 0 && lx + ox < CHUNK_SIZE && lz + oz >= 0 && lz + oz < CHUNK_SIZE) {
+                            let leafWX = wx + ox, leafWZ = wz + oz;
+                            let isLeafInRoad = (Math.abs(leafWX) % CHUNK_SIZE < ROAD_WIDTH) || (Math.abs(leafWZ) % CHUNK_SIZE < ROAD_WIDTH);
+                            if (!isLeafInRoad) this.setBlock(lx + ox, y, lz + oz, leafType);
+                          }
                         }
                       }
                     }
+                    // Snow layer under snowy trees
+                    if (biome === 'SNOW' && hill === 0) this.setBlock(lx, 0, lz, TYPES.SNOW);
                   }
                 }
-                // Flowers/bushes
-                if (hash2D(wx + 3, wz + 3) > 0.98) this.setBlock(lx, hill + 1, lz, TYPES.LEAVES);
+                // Flowers/bushes - not in desert or mountain
+                if (biome !== 'DESERT' && biome !== 'MOUNTAIN' && hash2D(wx + 3, wz + 3) > 0.98) this.setBlock(lx, hill + 1, lz, groundType === TYPES.SNOW ? TYPES.WHITE : TYPES.LEAVES);
+                // Desert: tumbleweeds/dead bushes
+                if (biome === 'DESERT' && hash2D(wx + 3, wz + 3) > 0.993) this.setBlock(lx, hill + 1, lz, TYPES.YELLOW);
+                // Desert: occasional oasis
+                if (biome === 'DESERT' && hash2D(wx * 2 + 7, wz * 2 + 7) > 0.998) {
+                  for (let ox = -2; ox <= 2; ox++) for (let oz = -2; oz <= 2; oz++) {
+                    if (Math.abs(ox) + Math.abs(oz) <= 2 && lx+ox >= 0 && lx+ox < CHUNK_SIZE && lz+oz >= 0 && lz+oz < CHUNK_SIZE)
+                      this.setBlock(lx+ox, hill > 0 ? hill : 0, lz+oz, TYPES.WATER);
+                  }
+                  // Palm tree at oasis
+                  for (let py = hill + 1; py <= hill + 6; py++) this.setBlock(lx, py, lz, TYPES.WOOD);
+                  for (let ox = -2; ox <= 2; ox++) for (let oz = -2; oz <= 2; oz++) {
+                    if (Math.abs(ox) + Math.abs(oz) <= 2 && lx+ox >= 0 && lx+ox < CHUNK_SIZE && lz+oz >= 0 && lz+oz < CHUNK_SIZE)
+                      this.setBlock(lx+ox, hill + 7, lz+oz, TYPES.LEAVES);
+                  }
+                }
                 // Rare fountain in parks
-                if (hash2D(wx, wz) > 0.995 && zone !== 'RURAL') {
+                if (hash2D(wx, wz) > 0.995 && zone !== 'RURAL' && biome === 'NORMAL') {
                   for (let fx = -2; fx <= 2; fx++) {
                     for (let fz = -2; fz <= 2; fz++) {
                       let d = Math.abs(fx) + Math.abs(fz);
@@ -4596,10 +4881,10 @@
                 // Secret gold found logic
               }
             }
-            // Mission 5: Track carpark block destruction (50 block target)
+            // Mission 5: Track carpark block destruction (200 block target ~5% of carpark)
             if (missionIndex === 4 && mission.state === 'DESTROY_CARPARK' && cx === 4 && cz === -1) {
               carparkBlocksDestroyed++;
-              let target = 50;
+              let target = 200;
               let pct = Math.min(Math.floor((carparkBlocksDestroyed / target) * 100), 100);
               document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: ' + Math.min(carparkBlocksDestroyed, target) + '/' + target + ' blocks';
               document.getElementById('demo-fill').style.height = pct + '%';
@@ -4658,10 +4943,10 @@
         // --- PLANE FLIGHT PHYSICS ---
         if (this.type === 'PLANE' && !this.isDead) {
           const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 24 * dt));
+          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 20 * dt));
           let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
           // Cap plane speed so terrain has time to load
-          if (speed > 32) { let s = 32 / speed; this.vel.x *= s; this.vel.z *= s; speed = 32; }
+          if (speed > 25) { let s = 25 / speed; this.vel.x *= s; this.vel.z *= s; speed = 25; }
           this.isFlying = speed > 12 || this.pos.y > 5;
           if (speed > 2) this.yaw -= inputSteer * 2.5 * dt;
           // Lift & climb (Space key handled in game loop, useNOS for mouse/mobile)
@@ -4730,23 +5015,23 @@
         else if (this.nos < 100) { this.nos += 10 * dt; }
         speedMult *= extraSpeed;
 
-        this.vel.add(forward.clone().multiplyScalar(inputAccel * 64 * speedMult * dt));
-        this.vel.x *= (inWater ? 0.8 : 0.96); this.vel.z *= (inWater ? 0.8 : 0.96);
+        this.vel.add(forward.clone().multiplyScalar(inputAccel * 50 * speedMult * dt));
+        this.vel.x *= (inWater ? 0.8 : 0.94); this.vel.z *= (inWater ? 0.8 : 0.94);
         let fwdSpeed = this.vel.dot(forward), latSpeed = this.vel.dot(right);
         let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
 
-        // Steering: faster yaw change at speed for drifty cornering
-        let steerAmount = inWater ? 1.5 : (4.0 + speed * 0.05);
+        // Steering: gradual yaw change for smooth, controllable turning
+        let steerAmount = inWater ? 1.2 : (2.2 + speed * 0.02);
         if (Math.abs(fwdSpeed) > 1 && !inWater) this.yaw -= inputSteer * steerAmount * dt * Math.sign(fwdSpeed);
 
-        // Drift grip model: grip drops with speed + steering angle
-        let speedFactor = Math.min(speed / 25, 1.0);
+        // Drift grip model: grip drops with speed + steering angle - more drifty
+        let speedFactor = Math.min(speed / 20, 1.0);
         let steerFactor = Math.abs(inputSteer);
-        let baseGrip = inWater ? 0.92 : 0.88;
-        let grip = baseGrip - (steerFactor * 0.35 * speedFactor) - (speedFactor * 0.1);
+        let baseGrip = inWater ? 0.90 : 0.82;
+        let grip = baseGrip - (steerFactor * 0.40 * speedFactor) - (speedFactor * 0.12);
         // Handbrake/NOS drift: using NOS while steering = powerslide
-        if (useNOS && steerFactor > 0.3 && speed > 8) grip -= 0.15;
-        grip = Math.max(0.35, Math.min(grip, 0.95));
+        if (useNOS && steerFactor > 0.3 && speed > 6) grip -= 0.20;
+        grip = Math.max(0.30, Math.min(grip, 0.92));
 
         // Track drift amount for effects
         let driftAmount = Math.abs(latSpeed) * (1 - grip);
@@ -5219,7 +5504,15 @@
       // Player is hidden if inside a building (block above them) or underground
       let blockAbove = getBlock(player.pos.x, player.pos.y + 3, player.pos.z);
       let blockAbove2 = getBlock(player.pos.x, player.pos.y + 6, player.pos.z);
-      return blockAbove !== TYPES.EMPTY || blockAbove2 !== TYPES.EMPTY;
+      if (blockAbove !== TYPES.EMPTY || blockAbove2 !== TYPES.EMPTY) return true;
+      // Also hidden if enclosed by blocks on all 4 sides (player-built shelter)
+      let px = player.pos.x, py = player.pos.y, pz = player.pos.z;
+      let wallN = getBlock(px, py + 1, pz - 2) !== TYPES.EMPTY;
+      let wallS = getBlock(px, py + 1, pz + 2) !== TYPES.EMPTY;
+      let wallE = getBlock(px + 2, py + 1, pz) !== TYPES.EMPTY;
+      let wallW = getBlock(px - 2, py + 1, pz) !== TYPES.EMPTY;
+      if (wallN && wallS && wallE && wallW) return true;
+      return false;
     }
 
     function showCrimeAlert() {
@@ -5273,6 +5566,9 @@
       // Build mode crosshair color
       let ch = document.getElementById('crosshair');
       if (ch) ch.style.filter = buildMode ? 'hue-rotate(90deg) brightness(1.5)' : '';
+      // Hide demolition progress when not in carpark mission
+      if (!(mission.active && mission.state === 'DESTROY_CARPARK'))
+        document.getElementById('demolition-progress').style.display = 'none';
       updateBlockCounter();
     }
 
@@ -5945,49 +6241,36 @@
       // Mission 5: Carpark block destruction - proximity triggers the mission phase
       if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 900) {
         mission.state = 'DESTROY_CARPARK';
-        document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: 0/50 blocks';
+        document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: 0/200 blocks';
         document.getElementById('demolition-progress').style.display = 'block';
         document.getElementById('demo-fill').style.height = '0%';
-        document.getElementById('demo-pct').innerText = '0/50';
-        showPhoneMessage("Boss: You're at the carpark. Blast a hole in it! Destroy 50 blocks!", 15000);
+        document.getElementById('demo-pct').innerText = '0/200';
+        showPhoneMessage("Boss: You're at the carpark. Blast a hole in it! Use your rocket launcher and destroy 200 blocks!", 15000);
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
-        if (islandDist < 6400) {
-          mission.state = 'LANDING_CINEMATIC';
-          isPaused = true;
-          // Cinematic landing: smoothly descend plane to island
-          let landingTime = 0;
-          let startPos = currentVehicle.pos.clone();
-          let startY = currentVehicle.pos.y;
-          let landTarget = new THREE.Vector3(ISLAND_X, 8, ISLAND_Z);
-          let landingInterval = setInterval(() => {
-            landingTime += 0.02;
-            let t = Math.min(1, landingTime);
-            let ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; // easeInOutQuad
-            currentVehicle.pos.lerpVectors(startPos, landTarget, ease);
-            currentVehicle.pos.y = startY + (8 - startY) * ease;
-            // Camera orbits around the landing
-            let camAngle = landingTime * 0.8;
-            let camDist = 25 - t * 10;
-            camera.position.set(
-              currentVehicle.pos.x + Math.cos(camAngle) * camDist,
-              currentVehicle.pos.y + 8 + (1 - t) * 15,
-              currentVehicle.pos.z + Math.sin(camAngle) * camDist
-            );
-            camera.lookAt(currentVehicle.pos);
-            if (composer) composer.render(); else renderer.render(scene, camera);
-            if (t >= 1) {
-              clearInterval(landingInterval);
-              // Exit vehicle
-              player.pos.copy(currentVehicle.pos).add(new THREE.Vector3(3, 0, 0));
-              player.pos.y = 9;
-              player.group.visible = true;
-              currentVehicle = null;
-              // Small delay then show success
-              setTimeout(() => triggerMissionSuccess(), 800);
-            }
-          }, 33);
+        // Show approach message when getting close
+        if (islandDist < 40000 && !mission._approachShown) {
+          mission._approachShown = true;
+          showPhoneMessage("Boss: There's the island! Slow down and land on the runway. Descend gently!", 15000);
+        }
+        // Detect actual landing on island - plane must be low and near island
+        let onIslandGround = islandDist < 10000 && currentVehicle.pos.y < 5 && !currentVehicle.isFlying;
+        if (onIslandGround && !mission._landingTimer) {
+          mission._landingTimer = Date.now();
+          showPhoneMessage("Boss: You've touched down! Stay on the island...", 8000);
+          document.getElementById('objective-text').innerText = 'STAY ON THE ISLAND - LANDING...';
+        }
+        if (mission._landingTimer && (islandDist > 10000 || currentVehicle.pos.y > 8)) {
+          mission._landingTimer = null; // Left island, reset timer
+        }
+        if (mission._landingTimer && Date.now() - mission._landingTimer > 5000) {
+          // Landed for 5 seconds - success!
+          player.pos.copy(currentVehicle.pos).add(new THREE.Vector3(3, 0, 0));
+          player.pos.y = currentVehicle.pos.y + 1;
+          player.group.visible = true;
+          currentVehicle = null;
+          triggerMissionSuccess();
         }
       }
       // Mission 7: Tank Heist phases
