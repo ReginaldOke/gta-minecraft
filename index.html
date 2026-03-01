@@ -290,24 +290,49 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 24px;
-      height: 24px;
       transform: translate(-50%, -50%);
       display: none;
       pointer-events: none;
-      opacity: 0.8;
+      z-index: 100;
+      /* Center dot */
+      width: 3px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
     }
 
-    #crosshair::before,
+    /* Horizontal lines (left + right with gap) */
+    #crosshair::before {
+      content: '';
+      position: absolute;
+      top: 0px;
+      left: -12px;
+      width: 7px;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.55);
+      box-shadow:
+        14px 0 0 rgba(255, 255, 255, 0.55),
+        0 0 3px rgba(0, 0, 0, 0.4),
+        14px 0 3px rgba(0, 0, 0, 0.4);
+      border-radius: 1px;
+    }
+
+    /* Vertical lines (top + bottom with gap) */
     #crosshair::after {
       content: '';
       position: absolute;
-      background: white;
-      box-shadow: 0 0 2px black;
+      left: 0px;
+      top: -12px;
+      width: 1.5px;
+      height: 7px;
+      background: rgba(255, 255, 255, 0.55);
+      box-shadow:
+        0 14px 0 rgba(255, 255, 255, 0.55),
+        0 0 3px rgba(0, 0, 0, 0.4),
+        0 14px 3px rgba(0, 0, 0, 0.4);
+      border-radius: 1px;
     }
-
-    #crosshair::before { top: 11px; left: 0; width: 24px; height: 2px; }
-    #crosshair::after { top: 0; left: 11px; width: 2px; height: 24px; }
 
     #phone-ui {
       position: fixed;
@@ -705,6 +730,27 @@
         margin-top: 20px !important;
         padding: 14px 40px !important;
         font-size: 20px !important;
+      }
+      /* Crosshair: slightly larger on mobile for visibility */
+      #crosshair {
+        width: 4px !important;
+        height: 4px !important;
+      }
+      #crosshair::before {
+        left: -15px !important;
+        width: 9px !important;
+        box-shadow:
+          17px 0 0 rgba(255, 255, 255, 0.55),
+          0 0 3px rgba(0, 0, 0, 0.4),
+          17px 0 3px rgba(0, 0, 0, 0.4) !important;
+      }
+      #crosshair::after {
+        top: -15px !important;
+        height: 9px !important;
+        box-shadow:
+          0 17px 0 rgba(255, 255, 255, 0.55),
+          0 0 3px rgba(0, 0, 0, 0.4),
+          0 17px 3px rgba(0, 0, 0, 0.4) !important;
       }
       /* Compact store on mobile — 3 columns */
       .store-title {
@@ -2717,6 +2763,7 @@
       document.getElementById('start-screen').style.display = 'none';
       isPlaying = true;
       startMission(0);
+      updateHUD();
       // Phone message appears after 6 seconds
       let phoneMsg = MISSIONS[0].phoneStart;
       _phoneTimeout = setTimeout(() => showPhoneMessage(phoneMsg, 20000), 6000);
@@ -5563,9 +5610,14 @@
         document.getElementById('nos-fill').style.width = currentVehicle.nos + "%";
       } else document.getElementById('car-hud').style.display = 'none';
       for (let i = 1; i <= 5; i++) document.getElementById("s" + i).style.color = (i <= wantedLevel) ? 'gold' : 'rgba(255,255,255,0.3)';
-      // Build mode crosshair color
+      // Crosshair: show only in shoot mode (not build mode, not in non-weapon vehicles)
       let ch = document.getElementById('crosshair');
-      if (ch) ch.style.filter = buildMode ? 'hue-rotate(90deg) brightness(1.5)' : '';
+      if (ch) {
+        let showCrosshair = !buildMode && !isPaused && isPlaying;
+        // In vehicle: only show for tank (has weapon), not for cars/planes
+        if (currentVehicle && currentVehicle.type !== 'TANK') showCrosshair = false;
+        ch.style.display = showCrosshair ? 'block' : 'none';
+      }
       // Hide demolition progress when not in carpark mission
       if (!(mission.active && mission.state === 'DESTROY_CARPARK'))
         document.getElementById('demolition-progress').style.display = 'none';
@@ -5956,7 +6008,7 @@
               if (idx >= 0) hotbarIndex = idx;
             }
           }
-          updateBlockCounter(); updateHotbar();
+          updateBlockCounter(); updateHotbar(); updateHUD();
           showFloatingText(buildMode ? 'BUILD: ' + (BLOCK_NAMES[selectedBlockType] || 'Block') : 'BUILD MODE OFF', player.pos);
         } else {
           showFloatingText('No blocks! Destroy buildings to collect.', player.pos);
