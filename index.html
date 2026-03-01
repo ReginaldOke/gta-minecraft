@@ -1042,8 +1042,9 @@
       <div id="joystick-knob"></div>
     </div>
     <div class="action-btns">
+      <button id="btn-interact" class="m-btn" style="display:none; background:rgba(34,197,94,0.85);">Drive</button>
+      <button id="btn-nos" class="m-btn" style="display:none; background:rgba(56,189,248,0.85); font-size:10px;">NOS</button>
       <button id="btn-build" class="m-btn" style="display:none; background:rgba(255,204,0,0.4); font-size:12px;">Build</button>
-      <button id="btn-interact" class="m-btn" style="display:none;">Drive</button>
       <button id="btn-jump" class="m-btn">Jump</button>
     </div>
   </div>
@@ -1675,8 +1676,8 @@
       phone.classList.remove('active');
       void phone.offsetWidth;
       phone.classList.add('active');
-      // Desktop gets 1.5x longer display time
-      let actualDuration = isMobileDevice ? duration : Math.round(duration * 1.5);
+      // Mobile: cap at 15s max so messages auto-dismiss. Desktop gets 1.5x longer.
+      let actualDuration = isMobileDevice ? Math.min(duration, 15000) : Math.round(duration * 1.5);
       if (phone._hideTimer) clearTimeout(phone._hideTimer);
       phone._hideTimer = setTimeout(() => {
         phone.classList.remove('active');
@@ -3486,16 +3487,17 @@
 
       scene.add(bankMarkerGroup);
 
-      // Bank signs on all 4 sides (lower, at height 8)
-      let bsm = bankSignMat.clone(); bsm.side = THREE.DoubleSide;
+      // Bank signs on all 4 sides (offset from walls to prevent z-fighting)
+      let bsm = bankSignMat.clone(); bsm.side = THREE.DoubleSide; bsm.depthWrite = false;
+      bsm.polygonOffset = true; bsm.polygonOffsetFactor = -1; bsm.polygonOffsetUnits = -1;
       let bankSignS = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), bsm);
-      bankSignS.position.set(72, 8, 60.5); bankSignS.rotation.y = Math.PI; scene.add(bankSignS); // South (front)
+      bankSignS.position.set(72, 8, 59.8); bankSignS.rotation.y = Math.PI; scene.add(bankSignS); // South (front)
       let bankSignN = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), bsm.clone());
-      bankSignN.position.set(72, 8, 83.5); scene.add(bankSignN); // North (back)
+      bankSignN.position.set(72, 8, 84.2); scene.add(bankSignN); // North (back)
       let bankSignW = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), bsm.clone());
-      bankSignW.position.set(60.5, 8, 72); bankSignW.rotation.y = -Math.PI / 2; scene.add(bankSignW); // West
+      bankSignW.position.set(59.8, 8, 72); bankSignW.rotation.y = -Math.PI / 2; scene.add(bankSignW); // West
       let bankSignE = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), bsm.clone());
-      bankSignE.position.set(83.5, 8, 72); bankSignE.rotation.y = Math.PI / 2; scene.add(bankSignE); // East
+      bankSignE.position.set(84.2, 8, 72); bankSignE.rotation.y = Math.PI / 2; scene.add(bankSignE); // East
 
       // Yellow glow ring around mission buildings
       let glowMat = new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
@@ -4426,59 +4428,64 @@
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? groundType : TYPES.CONCRETE);
-                // === CUL-DE-SAC SAFE HOUSE ===
+                // === FARM SAFE HOUSE ===
                 if (isAlley && !isRoad) {
-                  let culCX = 24, culHW = 3, culSZ = ROAD_WIDTH, culEZ = 38;
-                  let isCulRoad = (lx >= culCX - culHW && lx <= culCX + culHW && lz >= culSZ && lz <= culEZ);
-                  let turnDist = Math.sqrt((lx - culCX) * (lx - culCX) + (lz - culEZ) * (lz - culEZ));
-                  let isTurn = (turnDist <= 6 && lz >= culEZ - 2);
-                  if (isCulRoad || isTurn) {
-                    let isEdge = isCulRoad && (lx === culCX - culHW || lx === culCX + culHW);
-                    let isTurnEdge = isTurn && turnDist >= 5;
-                    this.setBlock(lx, 0, lz, (isEdge || isTurnEdge) ? TYPES.SIDEWALK : TYPES.ROAD);
+                  // Dirt path from road to barn
+                  let pathCX = 24, pathHW = 3;
+                  let isPath = (lx >= pathCX - pathHW && lx <= pathCX + pathHW && lz >= ROAD_WIDTH && lz <= 38);
+                  if (isPath) {
+                    this.setBlock(lx, 0, lz, TYPES.DIRT);
                   } else {
                     this.setBlock(lx, 0, lz, TYPES.GRASS);
-                    // Safe house at end of cul-de-sac
-                    let isSH = (lx >= 19 && lx <= 29 && lz >= 40 && lz <= 46);
-                    let isSHW = isSH && (lx === 19 || lx === 29 || lz === 40 || lz === 46);
-                    let isSHD = (lz === 40 && lx >= 23 && lx <= 25);
-                    if (isSH) {
-                      this.setBlock(lx, 0, lz, TYPES.GREEN);
-                      for (let sy = 1; sy <= 5; sy++) {
-                        if (isSHD && sy <= 3) continue;
-                        if (isSHW) this.setBlock(lx, sy, lz, TYPES.PLASTER_WARM);
-                        else if (sy === 1) this.setBlock(lx, sy, lz, TYPES.WOOD);
+                    // === BARN (safe house) ===
+                    let barnX1 = 18, barnX2 = 30, barnZ1 = 30, barnZ2 = 44;
+                    let barnMidX = 24, barnH = 7;
+                    let inBarn = (lx >= barnX1 && lx <= barnX2 && lz >= barnZ1 && lz <= barnZ2);
+                    let isBarnWall = inBarn && (lx === barnX1 || lx === barnX2 || lz === barnZ1 || lz === barnZ2);
+                    let isBarnDoor = (lz === barnZ1 && lx >= barnMidX - 2 && lx <= barnMidX + 2);
+                    if (inBarn) {
+                      for (let by = 1; by <= barnH; by++) {
+                        if (isBarnDoor && by <= 4) continue; // Door opening
+                        if (isBarnWall) this.setBlock(lx, by, lz, by <= 2 ? TYPES.WOOD : TYPES.BRICK_RED);
+                        else if (by === 1) this.setBlock(lx, by, lz, TYPES.DIRT); // Hay floor
                       }
-                      let dfc = Math.abs(lx - 24), rH = 8 - dfc;
-                      if (rH > 5) { for (let ry = 6; ry <= rH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN); }
-                    }
-                    // Neighboring houses
-                    let houses = [
-                      [5, 14, culSZ + 2, culSZ + 10, culSZ + 2, TYPES.PLASTER_LIGHT, 5],
-                      [5, 14, culSZ + 14, culSZ + 22, culSZ + 14, TYPES.BRICK_RED, 4],
-                      [34, 43, culSZ + 2, culSZ + 10, culSZ + 2, TYPES.BRICK, 5],
-                      [34, 43, culSZ + 14, culSZ + 22, culSZ + 14, TYPES.PLASTER_WARM, 4]
-                    ];
-                    for (let hd of houses) {
-                      let [x1,x2,z1,z2,dz,wt,hh] = hd;
-                      if (lx >= x1 && lx <= x2 && lz >= z1 && lz <= z2) {
-                        let isW = (lx === x1 || lx === x2 || lz === z1 || lz === z2);
-                        let mhx = Math.floor((x1 + x2) / 2);
-                        let isDr = (lz === dz && lx >= mhx - 1 && lx <= mhx + 1);
-                        for (let hy = 1; hy <= hh; hy++) {
-                          if (isDr && hy <= 3) continue;
-                          let isWin = (isW && hy === 2 && (lx % 3 === 0 || lz % 3 === 0) && !isDr);
-                          if (isW) this.setBlock(lx, hy, lz, isWin ? TYPES.GLASS : wt);
-                          else if (hy === 1) this.setBlock(lx, hy, lz, TYPES.WOOD);
+                      // Peaked roof
+                      let dfc = Math.abs(lx - barnMidX);
+                      let roofH = barnH + Math.floor((barnX2 - barnX1) / 2) - dfc;
+                      if (roofH > barnH) {
+                        for (let ry = barnH + 1; ry <= roofH; ry++) {
+                          if (lz === barnZ1 || lz === barnZ2 || ry === roofH) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN);
                         }
-                        let rC = Math.floor((x1 + x2) / 2), dfcH = Math.abs(lx - rC);
-                        let rHH = hh + 3 - dfcH;
-                        if (rHH > hh) { for (let ry = hh + 1; ry <= rHH; ry++) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN); }
+                      }
+                      // Hay bales inside
+                      if (!isBarnWall && lz > barnZ1 + 3 && lz < barnZ2 - 1 && lx > barnX1 + 1 && lx < barnX2 - 1 && hash2D(lx * 5, lz * 5) > 0.7) {
+                        this.setBlock(lx, 2, lz, TYPES.YELLOW);
+                        if (hash2D(lx * 7, lz * 7) > 0.5) this.setBlock(lx, 3, lz, TYPES.YELLOW);
                       }
                     }
-                    // Fences along cul-de-sac road
-                    let nearCul = (lx === culCX - culHW - 2 || lx === culCX + culHW + 2);
-                    if (nearCul && lz >= culSZ && lz <= culEZ && lz % 2 === 0) this.setBlock(lx, 1, lz, TYPES.WOOD);
+                    // === FARM ANIMALS (cows) ===
+                    if (!inBarn && lz > ROAD_WIDTH + 2 && hash2D(lx * 3 + 77, lz * 3 + 77) > 0.97) {
+                      // Cow: 3 blocks long, 2 high
+                      if (lx < CHUNK_SIZE - 3) {
+                        this.setBlock(lx, 1, lz, TYPES.WHITE); this.setBlock(lx+1, 1, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, 1, lz, TYPES.WHITE);
+                        this.setBlock(lx, 2, lz, TYPES.WHITE); this.setBlock(lx+2, 2, lz, TYPES.CONCRETE_DARK);
+                      }
+                    }
+                    // === TRACTOR ===
+                    if (!inBarn && lx >= 36 && lx <= 39 && lz >= 20 && lz <= 23) {
+                      let tx = lx - 36, tz = lz - 20;
+                      if (tx < 3 && tz < 3) { this.setBlock(lx, 1, lz, TYPES.RED); }
+                      if (tx === 0 && tz === 0) this.setBlock(lx, 2, lz, TYPES.RED);
+                      if (tx === 1 && tz === 0) this.setBlock(lx, 2, lz, TYPES.CONCRETE_DARK);
+                    }
+                    // === WOODEN FENCES ===
+                    if (!inBarn && (lx === 3 || lx === 45 || lz === CHUNK_SIZE - 3) && lz > ROAD_WIDTH && lz % 2 === 0) {
+                      this.setBlock(lx, 1, lz, TYPES.WOOD);
+                    }
+                    // Fence along path
+                    if ((lx === pathCX - pathHW - 1 || lx === pathCX + pathHW + 1) && lz >= ROAD_WIDTH && lz <= 30 && lz % 2 === 0) {
+                      this.setBlock(lx, 1, lz, TYPES.WOOD);
+                    }
                   }
                 }
               }
@@ -4674,7 +4681,6 @@
                     if (effectiveWall) {
                       if (y === buildingHeight || (y % 5 === 1 && y > 1)) {
                         this.setBlock(lx, y, lz, trimType);
-                        if (y === buildingHeight) this.setBlock(lx, y + 1, lz, trimType);
                       } else {
                         this.setBlock(lx, y, lz, isWindow ? glassType : bType);
                       }
@@ -4723,42 +4729,7 @@
                       }
                     }
                   }
-                  // Supertall skyscrapers: antenna spire + rooftop details
-                  // Calculate the actual shrunk footprint at buildingHeight to avoid floating blocks
-                  if (zone === 'DOWNTOWN' && buildingHeight > 60 && !isBank && !isStore && !isCarpark) {
-                    let topShrink = 0;
-                    if (buildingHeight > setbackH) {
-                      topShrink = Math.floor((buildingHeight - setbackH) / 4) + 2;
-                      let topMaxShrink = Math.min(Math.floor(bWidth / 2) - 2, Math.floor(bDepth / 2) - 2);
-                      if (topShrink >= topMaxShrink) topShrink = topMaxShrink - 1;
-                    }
-                    let topX1 = bStartX + topShrink, topX2 = bStartX + bWidth - topShrink;
-                    let topZ1 = bStartZ + topShrink, topZ2 = bStartZ + bDepth - topShrink;
-                    let topMidX = Math.floor((topX1 + topX2) / 2);
-                    let topMidZ = Math.floor((topZ1 + topZ2) / 2);
-                    // Antenna spire at true center of the narrowed top
-                    if (lx === topMidX && lz === topMidZ) {
-                      let spireH = Math.floor(buildingHeight * 0.15);
-                      for (let sy = buildingHeight + 1; sy <= buildingHeight + spireH; sy++) {
-                        this.setBlock(lx, sy, lz, TYPES.STEEL);
-                      }
-                      this.setBlock(lx, buildingHeight + spireH + 1, lz, TYPES.RED);
-                    }
-                    // Rooftop mechanical penthouse - use the shrunk footprint
-                    let topW = topX2 - topX1, topD = topZ2 - topZ1;
-                    if (topW > 4 && topD > 4) {
-                      let phX1 = topX1 + Math.floor(topW * 0.3), phX2 = topX1 + Math.floor(topW * 0.7);
-                      let phZ1 = topZ1 + Math.floor(topD * 0.3), phZ2 = topZ1 + Math.floor(topD * 0.7);
-                      if (lx >= phX1 && lx <= phX2 && lz >= phZ1 && lz <= phZ2) {
-                        let isPHWall = (lx === phX1 || lx === phX2 || lz === phZ1 || lz === phZ2);
-                        if (isPHWall) {
-                          for (let py = buildingHeight + 1; py <= buildingHeight + 4; py++) {
-                            this.setBlock(lx, py, lz, TYPES.CONCRETE_DARK);
-                          }
-                        }
-                      }
-                    }
-                  }
+                  // Rooftop trim for downtown towers (no floating antenna/penthouse)
                   // Suburban peaked roofs + front porches
                   if (zone === 'SUBURBAN' && !isBank && !isStore && !isCarpark && buildingHeight > 0) {
                     let roofPeak = buildingHeight + Math.floor(Math.min(bWidth, bDepth) / 3) + 1;
@@ -4943,6 +4914,8 @@
               } else if (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN') {
                 // Nature generation - larger terrain hills
                 let hillScale = zone === 'RURAL' ? 10 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 6 : 3));
+                // Safe house farm: completely flat ground
+                if (isAlley) hillScale = 0;
 
                 // Mountain biome: massive terrain
                 if (biome === 'MOUNTAIN') {
@@ -5538,9 +5511,9 @@
         else if (this.nos < 100) { this.nos += 10 * dt; }
         speedMult *= extraSpeed;
 
-        let accelBase = isMobileDevice ? 50 : 55; // 10% faster on desktop
+        let accelBase = isMobileDevice ? 55 : 55; // Same acceleration on both platforms
         this.vel.add(forward.clone().multiplyScalar(inputAccel * accelBase * speedMult * dt));
-        let dampBase = isMobileDevice ? 0.94 : 0.945; // Slightly less drag on desktop for higher top speed
+        let dampBase = isMobileDevice ? 0.945 : 0.945; // Same top speed on both platforms
         this.vel.x *= (inWater ? 0.8 : dampBase); this.vel.z *= (inWater ? 0.8 : dampBase);
         let fwdSpeed = this.vel.dot(forward), latSpeed = this.vel.dot(right);
         let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
@@ -5944,7 +5917,7 @@
         if (p.pos.distanceToSquared(player.pos) > CHUNK_SIZE * CHUNK_SIZE * 9 || p.isDead) { p.dispose(); return false; }
         return true;
       });
-      let maxVehicles = isMobileDevice ? 15 : 25;
+      let maxVehicles = isMobileDevice ? 20 : 25;
       while (vehicles.length < maxVehicles) {
         let r = CHUNK_SIZE + Math.random() * CHUNK_SIZE * 2, angle = Math.random() * Math.PI * 2;
         let cx = player.pos.x + Math.cos(angle) * r, cz = player.pos.z + Math.sin(angle) * r;
@@ -5994,7 +5967,7 @@
           boatCount++;
         }
       }
-      let maxCivilians = isMobileDevice ? 10 : 20;
+      let maxCivilians = isMobileDevice ? 15 : 20;
       while (peds.filter(p => p.type === 'CIVILIAN').length < maxCivilians) {
         let r = CHUNK_SIZE / 2 + Math.random() * CHUNK_SIZE, angle = Math.random() * Math.PI * 2;
         peds.push(new Pedestrian('CIVILIAN', player.pos.x + Math.cos(angle) * r, player.pos.z + Math.sin(angle) * r));
@@ -6516,6 +6489,10 @@
       });
       document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); hideTutorial(); keys.space = true; });
       document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys.space = false; });
+      // Mobile NOS button
+      window._mobileNOS = false;
+      document.getElementById('btn-nos').addEventListener('touchstart', (e) => { e.preventDefault(); window._mobileNOS = true; });
+      document.getElementById('btn-nos').addEventListener('touchend', (e) => { e.preventDefault(); window._mobileNOS = false; });
       // Mobile build button
       document.getElementById('btn-build').addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -7008,7 +6985,8 @@
 
         if (hidden) {
           wantedTimer -= dt * 4; // Very fast decay when hiding in buildings
-          if (!evadingMessage) showEvadeMessage();
+          // Only show evade message once timer is well into decay (not immediately after leaving bank)
+          if (!evadingMessage && wantedTimer < 12) showEvadeMessage();
         } else if (aliveCopsNearby === 0) {
           wantedTimer -= dt * 3; // Fast decay - killed all nearby cops
         } else if (nearestCopDistSq > 10000) {
@@ -7188,8 +7166,14 @@
         mAct.innerText = 'Exit'; mAct.style.display = 'flex';
         let buildBtnV = document.getElementById('btn-build');
         if (buildBtnV) buildBtnV.style.display = 'none';
-        // Tank: click = shoot, no NOS. Other vehicles: click = NOS
-        let useNOS = currentVehicle.type === 'TANK' ? false : isMouseDown;
+        // Show NOS button for driveable vehicles (not tank/plane/boat)
+        let nosBtn = document.getElementById('btn-nos');
+        if (nosBtn) {
+          let showNos = currentVehicle.type !== 'TANK' && currentVehicle.type !== 'PLANE' && currentVehicle.type !== 'BOAT';
+          nosBtn.style.display = showNos ? 'flex' : 'none';
+        }
+        // Tank: click = shoot, no NOS. Other vehicles: click = NOS (or mobile NOS button)
+        let useNOS = currentVehicle.type === 'TANK' ? false : (isMouseDown || window._mobileNOS);
         currentVehicle.updatePhysics(dt, -moveZ, moveX, useNOS);
         if (isMouseDown && currentVehicle.type !== 'TANK') updateHUD();
         // Burning car damages player
@@ -7268,6 +7252,9 @@
            }
         }
         mAct.style.display = showMobile ? 'flex' : 'none';
+        // Hide NOS button when on foot
+        let nosBtnFoot = document.getElementById('btn-nos');
+        if (nosBtnFoot) nosBtnFoot.style.display = 'none';
         // Show/hide mobile build button
         let buildBtn = document.getElementById('btn-build');
         if (buildBtn) {
