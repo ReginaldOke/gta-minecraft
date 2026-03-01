@@ -4662,6 +4662,15 @@
                     }
 
                     // Standard building shell
+                    // Calculate setback-adjusted bounds for interior elements
+                    let curShrink = 0;
+                    if (y > setbackH && zone === 'DOWNTOWN' && !isBank && !isStore && !isCarpark) {
+                      curShrink = Math.floor((y - setbackH) / 4) + 2;
+                    }
+                    let curX1 = bStartX + curShrink, curX2 = bStartX + bWidth - curShrink;
+                    let curZ1 = bStartZ + curShrink, curZ2 = bStartZ + bDepth - curShrink;
+                    let curW = curX2 - curX1, curD = curZ2 - curZ1;
+
                     if (effectiveWall) {
                       if (y === buildingHeight || (y % 5 === 1 && y > 1)) {
                         this.setBlock(lx, y, lz, trimType);
@@ -4670,70 +4679,82 @@
                         this.setBlock(lx, y, lz, isWindow ? glassType : bType);
                       }
                     } else if (isFloor) {
-                      // Alternating staircase positions per floor
+                      // Alternating staircase positions per floor (adjusted for setback)
                       let floorNum = Math.floor((y - 1) / 5);
-                      let stairW = 4, stairD = 6, holeW = 5, holeD = 7;
-                      let sx, sz;
-                      if (floorNum % 2 === 0) {
-                        sx = bStartX + 2; sz = bStartZ + 2;
-                      } else {
-                        sx = bStartX + bWidth - 2 - stairW; sz = bStartZ + bDepth - 2 - stairD;
-                      }
-                      let inHole = (lx >= sx - 1 && lx < sx + holeW && lz >= sz - 1 && lz < sz + holeD);
-                      if (!inHole) this.setBlock(lx, y, lz, TYPES.WOOD);
-                      // Interior furniture — desks/tables
-                      if (!inHole && lx % 7 === 0 && lz % 7 === 0 && lx > bStartX + 2 && lx < bStartX + bWidth - 2 && lz > bStartZ + 2 && lz < bStartZ + bDepth - 2) {
-                        this.setBlock(lx, y + 1, lz, TYPES.WOOD);
+                      let stairW = Math.min(4, curW - 4), stairD = Math.min(6, curD - 4);
+                      if (stairW < 2 || stairD < 2) { this.setBlock(lx, y, lz, TYPES.WOOD); } else {
+                        let holeW = stairW + 1, holeD = stairD + 1;
+                        let sx, sz;
+                        if (floorNum % 2 === 0) {
+                          sx = curX1 + 2; sz = curZ1 + 2;
+                        } else {
+                          sx = curX2 - 2 - stairW; sz = curZ2 - 2 - stairD;
+                        }
+                        let inHole = (lx >= sx - 1 && lx < sx + holeW && lz >= sz - 1 && lz < sz + holeD);
+                        if (!inHole) this.setBlock(lx, y, lz, TYPES.WOOD);
+                        // Interior furniture — desks/tables (within current bounds)
+                        if (!inHole && lx % 7 === 0 && lz % 7 === 0 && lx > curX1 + 2 && lx < curX2 - 2 && lz > curZ1 + 2 && lz < curZ2 - 2) {
+                          this.setBlock(lx, y + 1, lz, TYPES.WOOD);
+                        }
                       }
                     } else {
-                      // Alternating staircase — goes up 1 block per Z step
+                      // Alternating staircase — goes up 1 block per Z step (adjusted for setback)
                       let floorNum = Math.floor((y - 1) / 5);
-                      let stairW = 4, stairD = 6;
-                      let sx, sz;
-                      if (floorNum % 2 === 0) {
-                        sx = bStartX + 2; sz = bStartZ + 2;
-                      } else {
-                        sx = bStartX + bWidth - 2 - stairW; sz = bStartZ + bDepth - 2 - stairD;
-                      }
-                      if (lx >= sx && lx < sx + stairW && lz >= sz && lz < sz + stairD) {
-                        let localY = (y - 1) % 5;
-                        let stepZ;
+                      let stairW = Math.min(4, curW - 4), stairD = Math.min(6, curD - 4);
+                      if (stairW >= 2 && stairD >= 2) {
+                        let sx, sz;
                         if (floorNum % 2 === 0) {
-                          stepZ = localY; // stairs go up along +Z
+                          sx = curX1 + 2; sz = curZ1 + 2;
                         } else {
-                          stepZ = stairD - 1 - localY; // stairs go up along -Z
+                          sx = curX2 - 2 - stairW; sz = curZ2 - 2 - stairD;
                         }
-                        if (lz - sz === stepZ) this.setBlock(lx, y, lz, TYPES.STEEL);
-                        else if (lz - sz < stepZ && floorNum % 2 === 0) this.setBlock(lx, y, lz, TYPES.STEEL);
-                        else if (lz - sz > stepZ && floorNum % 2 !== 0) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        if (lx >= sx && lx < sx + stairW && lz >= sz && lz < sz + stairD) {
+                          let localY = (y - 1) % 5;
+                          let stepZ;
+                          if (floorNum % 2 === 0) {
+                            stepZ = localY;
+                          } else {
+                            stepZ = stairD - 1 - localY;
+                          }
+                          if (lz - sz === stepZ) this.setBlock(lx, y, lz, TYPES.STEEL);
+                          else if (lz - sz < stepZ && floorNum % 2 === 0) this.setBlock(lx, y, lz, TYPES.STEEL);
+                          else if (lz - sz > stepZ && floorNum % 2 !== 0) this.setBlock(lx, y, lz, TYPES.STEEL);
+                        }
                       }
                     }
                   }
                   // Supertall skyscrapers: antenna spire + rooftop details
+                  // Calculate the actual shrunk footprint at buildingHeight to avoid floating blocks
                   if (zone === 'DOWNTOWN' && buildingHeight > 60 && !isBank && !isStore && !isCarpark) {
-                    // Antenna spire at center of building
-                    if (Math.abs(lx - midX) <= 1 && Math.abs(lz - Math.floor(bStartZ + bDepth / 2)) <= 1) {
-                      let spireH = Math.floor(buildingHeight * 0.15); // 15% of building height
-                      for (let sy = buildingHeight + 1; sy <= buildingHeight + spireH; sy++) {
-                        if (lx === midX && lz === Math.floor(bStartZ + bDepth / 2)) {
-                          this.setBlock(lx, sy, lz, TYPES.STEEL);
-                        } else if (sy < buildingHeight + 4) {
-                          this.setBlock(lx, sy, lz, TYPES.CONCRETE_DARK);
-                        }
-                      }
-                      // Blinking light at very top
-                      if (lx === midX && lz === Math.floor(bStartZ + bDepth / 2)) {
-                        this.setBlock(lx, buildingHeight + spireH + 1, lz, TYPES.RED);
-                      }
+                    let topShrink = 0;
+                    if (buildingHeight > setbackH) {
+                      topShrink = Math.floor((buildingHeight - setbackH) / 4) + 2;
+                      let topMaxShrink = Math.min(Math.floor(bWidth / 2) - 2, Math.floor(bDepth / 2) - 2);
+                      if (topShrink >= topMaxShrink) topShrink = topMaxShrink - 1;
                     }
-                    // Rooftop mechanical penthouse
-                    let phX1 = bStartX + Math.floor(bWidth * 0.3), phX2 = bStartX + Math.floor(bWidth * 0.7);
-                    let phZ1 = bStartZ + Math.floor(bDepth * 0.3), phZ2 = bStartZ + Math.floor(bDepth * 0.7);
-                    if (lx >= phX1 && lx <= phX2 && lz >= phZ1 && lz <= phZ2) {
-                      let isPHWall = (lx === phX1 || lx === phX2 || lz === phZ1 || lz === phZ2);
-                      if (isPHWall) {
-                        for (let py = buildingHeight + 1; py <= buildingHeight + 4; py++) {
-                          this.setBlock(lx, py, lz, TYPES.CONCRETE_DARK);
+                    let topX1 = bStartX + topShrink, topX2 = bStartX + bWidth - topShrink;
+                    let topZ1 = bStartZ + topShrink, topZ2 = bStartZ + bDepth - topShrink;
+                    let topMidX = Math.floor((topX1 + topX2) / 2);
+                    let topMidZ = Math.floor((topZ1 + topZ2) / 2);
+                    // Antenna spire at true center of the narrowed top
+                    if (lx === topMidX && lz === topMidZ) {
+                      let spireH = Math.floor(buildingHeight * 0.15);
+                      for (let sy = buildingHeight + 1; sy <= buildingHeight + spireH; sy++) {
+                        this.setBlock(lx, sy, lz, TYPES.STEEL);
+                      }
+                      this.setBlock(lx, buildingHeight + spireH + 1, lz, TYPES.RED);
+                    }
+                    // Rooftop mechanical penthouse - use the shrunk footprint
+                    let topW = topX2 - topX1, topD = topZ2 - topZ1;
+                    if (topW > 4 && topD > 4) {
+                      let phX1 = topX1 + Math.floor(topW * 0.3), phX2 = topX1 + Math.floor(topW * 0.7);
+                      let phZ1 = topZ1 + Math.floor(topD * 0.3), phZ2 = topZ1 + Math.floor(topD * 0.7);
+                      if (lx >= phX1 && lx <= phX2 && lz >= phZ1 && lz <= phZ2) {
+                        let isPHWall = (lx === phX1 || lx === phX2 || lz === phZ1 || lz === phZ2);
+                        if (isPHWall) {
+                          for (let py = buildingHeight + 1; py <= buildingHeight + 4; py++) {
+                            this.setBlock(lx, py, lz, TYPES.CONCRETE_DARK);
+                          }
                         }
                       }
                     }
