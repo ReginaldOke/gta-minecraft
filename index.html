@@ -1416,7 +1416,7 @@
       return 'NORMAL';
     }
     const MATERIALS = {};
-    const MAX_PARTICLES = 300;
+    const MAX_PARTICLES = 150; // Reduced for mobile performance (was 300)
     
     let scene, camera, renderer, minimapCtx, skybox, dirLight, composer;
     let isPlaying = false, isPaused = false;
@@ -2768,8 +2768,14 @@
       }
     }
 
+    let _nextFreeParticle = 0; // Fast particle pool index
     function spawnPhysicsParticle(x, y, z, color, baseVel, isSmoke = false) {
-      let p = particlePool.find(p => !p.active);
+      // O(1) best case: start from last known free slot
+      let p = null;
+      for (let i = 0; i < particlePool.length; i++) {
+        let idx = (_nextFreeParticle + i) % particlePool.length;
+        if (!particlePool[idx].active) { p = particlePool[idx]; _nextFreeParticle = (idx + 1) % particlePool.length; break; }
+      }
       if (!p) return;
       p.active = true; p.isSmoke = isSmoke; p.mesh.position.set(x, y, z); p.mesh.visible = true;
       let hexColor = 0xffaa00;
@@ -2923,8 +2929,9 @@
         }
       }
       spawnDeathParticles(worldPos, baseVel) {
-        for (let i = 0; i < 15; i++) spawnPhysicsParticle(worldPos.x, worldPos.y + 1, worldPos.z, this.body.material.color.getHex(), baseVel);
-        for (let i = 0; i < 5; i++) spawnPhysicsParticle(worldPos.x, worldPos.y + 1.5, worldPos.z, 0xff0000, baseVel);
+        let pCount = isMobileDevice ? 6 : 15;
+        for (let i = 0; i < pCount; i++) spawnPhysicsParticle(worldPos.x, worldPos.y + 1, worldPos.z, this.body.material.color.getHex(), baseVel);
+        for (let i = 0; i < (isMobileDevice ? 2 : 5); i++) spawnPhysicsParticle(worldPos.x, worldPos.y + 1.5, worldPos.z, 0xff0000, baseVel);
         this.group.visible = false;
       }
     }
@@ -3320,15 +3327,15 @@
     // --- Initialization ---
     function init() {
       scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x88b8d8, 0.0010);
+      scene.fog = new THREE.FogExp2(0x88b8d8, isMobileDevice ? 0.0018 : 0.0010);
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2500);
       renderer = new THREE.WebGLRenderer({
         canvas: document.getElementById('game-canvas'), antialias: false, powerPreference: "high-performance"
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileDevice ? 1.0 : 1.5));
+      renderer.shadowMap.enabled = !isMobileDevice; // Disable shadows on mobile for performance
+      if (!isMobileDevice) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 0.72;
       renderer.outputEncoding = THREE.sRGBEncoding;
@@ -3441,7 +3448,8 @@
       
       const skidGeo = new THREE.PlaneGeometry(0.4, 1.8); // Narrow & elongated tyre streaks
       const skidMat = new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.6, depthWrite: false });
-      for (let i = 0; i < 500; i++) {
+      let maxSkidMarks = isMobileDevice ? 150 : 500;
+      for (let i = 0; i < maxSkidMarks; i++) {
         let m = new THREE.Mesh(skidGeo, skidMat.clone());
         m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m);
         skidMarks.push(m);
@@ -3682,12 +3690,14 @@
 
       player = new PlayerModel();
 
-      // Setup Post-Processing Composer
-      composer = new EffectComposer(renderer);
-      const renderPass = new RenderPass(scene, camera);
-      composer.addPass(renderPass);
-      const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.4, 0.95);
-      composer.addPass(bloomPass);
+      // Setup Post-Processing Composer (skip bloom on mobile for performance)
+      if (!isMobileDevice) {
+        composer = new EffectComposer(renderer);
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 0.4, 0.95);
+        composer.addPass(bloomPass);
+      }
 
       window.addEventListener('resize', () => {
         camera.aspect = window.innerWidth / window.innerHeight;
@@ -3711,7 +3721,7 @@
       scene.add(miningOverlay);
 
       // Atmospheric dust particles
-      let dustCount = 200;
+      let dustCount = isMobileDevice ? 50 : 200;
       let dustGeo = new THREE.BufferGeometry();
       let dustPositions = new Float32Array(dustCount * 3);
       for (let i = 0; i < dustCount; i++) {
@@ -3807,12 +3817,12 @@
           // Gravity for grenades
           this.vel.y -= 20 * dt;
           if (this.grenadeTimer <= 0) {
-            // Explode with 10-block radius
-            let r = 10;
+            // Explode - smaller radius on mobile for performance
+            let r = isMobileDevice ? 6 : 8;
             for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) for (let dz = -r; dz <= r; dz++)
               if (dx*dx+dy*dy+dz*dz <= r*r) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
-            for (let fi = 0; fi < 25; fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
-            for (let si = 0; si < 12; si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
+            for (let fi = 0; fi < (isMobileDevice ? 10 : 20); fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
+            for (let si = 0; si < (isMobileDevice ? 5 : 10); si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
             for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 200 && !(v.type === 'PLANE' && v.parked && v !== currentVehicle)) v.takeDamage(500, true);
             for (let p of peds) if (!p.isDead && p.pos.distanceToSquared(this.pos) < 100) p.takeDamage(200, this.pos, this.vel, true);
             return true; // Remove projectile
@@ -3828,11 +3838,12 @@
               this.vel.set(0, 0, 0);
               hit = false; break; // Don't destroy yet, let timer handle it
             } else if (this.isPlayer && this.isRocket) {
-              // Rocket: 5-block radius explosion
-              for (let dx = -5; dx <= 5; dx++) for (let dy = -5; dy <= 5; dy++) for (let dz = -5; dz <= 5; dz++)
-                if (dx*dx+dy*dy+dz*dz <= 25) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
-              for (let fi = 0; fi < 15; fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
-              for (let si = 0; si < 8; si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
+              // Rocket: explosion radius
+              let rr = isMobileDevice ? 4 : 5;
+              for (let dx = -rr; dx <= rr; dx++) for (let dy = -rr; dy <= rr; dy++) for (let dz = -rr; dz <= rr; dz++)
+                if (dx*dx+dy*dy+dz*dz <= rr*rr) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
+              for (let fi = 0; fi < (isMobileDevice ? 8 : 15); fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
+              for (let si = 0; si < (isMobileDevice ? 4 : 8); si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
               // Damage nearby vehicles
               for (let v of vehicles) if (v.pos.distanceToSquared(this.pos) < 100 && !(v.type === 'PLANE' && v.parked && v !== currentVehicle)) v.takeDamage(300, true);
             } else if (this.isPlayer) {
@@ -3920,12 +3931,12 @@
           let distFromCenter = Math.sqrt(this.cx * this.cx + this.cz * this.cz);
           let superTallHash = hash2D(this.cx * 47 + 13, this.cz * 47 + 13);
           if (distFromCenter <= 2 && superTallHash > 0.4) {
-            // Supertall skyscrapers (4x normal height) in center 5x5 chunks
-            buildingHeight = 180 + Math.floor(h * 80); // 180-260 blocks
+            // Supertall skyscrapers - optimized heights for mobile performance
+            buildingHeight = isMobileDevice ? (80 + Math.floor(h * 40)) : (120 + Math.floor(h * 60)); // Mobile: 80-120, Desktop: 120-180
             wallType = TYPES.GLASS_DARK; glassType = TYPES.GLASS_BLUE;
           } else if (distFromCenter <= 4 && superTallHash > 0.65) {
             // Tall skyscrapers surrounding the supertalls
-            buildingHeight = 100 + Math.floor(h * 60); // 100-160 blocks
+            buildingHeight = isMobileDevice ? (50 + Math.floor(h * 30)) : (70 + Math.floor(h * 50)); // Mobile: 50-80, Desktop: 70-120
             wallType = TYPES.GLASS_DARK; glassType = TYPES.GLASS_BLUE;
           } else {
             buildingHeight = 30 + Math.floor(h * 35);
@@ -4081,9 +4092,10 @@
               if (isFarmIslet || isSchoolIslet || isHospIslet || isHillIslet) isWater = false;
 
               if (isWater && !onBridge) {
-                // Deep ocean around island
-                for (let wy = -3; wy <= 0; wy++) this.setBlock(lx, wy, lz, TYPES.WATER);
-                this.setBlock(lx, -4, lz, TYPES.SAND);
+                // Deep ocean around island (shallower on mobile)
+                let islandWaterDepth = isMobileDevice ? 1 : 3;
+                for (let wy = -islandWaterDepth; wy <= 0; wy++) this.setBlock(lx, wy, lz, TYPES.WATER);
+                this.setBlock(lx, -islandWaterDepth - 1, lz, TYPES.SAND);
                 // Beach sand ring around island
                 if (idDist > islandRadius && idDist < islandRadius + 6) {
                   this.setBlock(lx, 0, lz, TYPES.SAND);
@@ -4123,7 +4135,7 @@
                   else this.setBlock(lx, my, lz, TYPES.DIRT);
                 }
                 // Palm trees on lower slopes (fewer on mansion/north half)
-                let palmThreshold = (wz > ISLAND_Z) ? 0.985 : 0.92;
+                let palmThreshold = (wz > ISLAND_Z) ? 0.985 : (isMobileDevice ? 0.95 : 0.92);
                 if (mtH < 8 && mtH > 2 && hash2D(wx * 7, wz * 7) > palmThreshold) {
                   let treeH = 5 + Math.floor(hash2D(wx * 3, wz * 3) * 3);
                   for (let ty = mtH + 1; ty <= mtH + treeH; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
@@ -4299,7 +4311,7 @@
             }
 
             if (isWater) {
-              let waterDepth = zone === 'OCEAN' ? 5 : 2; // Deep ocean water
+              let waterDepth = zone === 'OCEAN' ? (isMobileDevice ? 2 : 5) : 2; // Deep ocean water (shallower on mobile)
               for (let wy = -waterDepth; wy <= 0; wy++) this.setBlock(lx, wy, lz, TYPES.WATER);
               this.setBlock(lx, -waterDepth - 1, lz, zone === 'OCEAN' ? TYPES.SAND : TYPES.DIRT);
               if (isRoad && zone !== 'OCEAN') {
@@ -4698,7 +4710,7 @@
                     }
                   }
                   // Supertall skyscrapers: antenna spire + rooftop details
-                  if (zone === 'DOWNTOWN' && buildingHeight > 100 && !isBank && !isStore && !isCarpark) {
+                  if (zone === 'DOWNTOWN' && buildingHeight > 60 && !isBank && !isStore && !isCarpark) {
                     // Antenna spire at center of building
                     if (Math.abs(lx - midX) <= 1 && Math.abs(lz - Math.floor(bStartZ + bDepth / 2)) <= 1) {
                       let spireH = Math.floor(buildingHeight * 0.15); // 15% of building height
@@ -4985,8 +4997,8 @@
                     for (let hy = 1; hy <= fieldH; hy++) this.setBlock(lx, hy, lz, hy === fieldH ? TYPES.GRASS : TYPES.DIRT);
                   }
                   hill = fieldH; // Override for tree/building placement
-                  // Farm animals - lots of them
-                  if (hash2D(wx * 3 + 77, wz * 3 + 77) > 0.975) {
+                  // Farm animals
+                  if (hash2D(wx * 3 + 77, wz * 3 + 77) > (isMobileDevice ? 0.99 : 0.975)) {
                     let animalType = Math.floor(hash2D(wx * 7 + 33, wz * 7 + 33) * 1000) % 3;
                     let sh = hill + 1;
                     if (animalType === 0 && lx < CHUNK_SIZE - 3) {
@@ -5215,8 +5227,9 @@
             // Check if there's a surface block at y=0 (not water/empty)
             let surfaceBlock = this.blocks.get(lx + ",0," + lz);
             if (!surfaceBlock || surfaceBlock === TYPES.WATER) continue;
-            // Generate 4 underground layers (y=-1 to y=-4)
-            for (let dy = -1; dy >= -4; dy--) {
+            // Generate underground layers (fewer on mobile)
+            let underDepth = isMobileDevice ? -2 : -4;
+            for (let dy = -1; dy >= underDepth; dy--) {
               let oreRoll = hash2D(wx * 0.37 + dy * 13.7, wz * 0.41 + dy * 7.3);
               let blockType = (dy === -1) ? TYPES.DIRT : TYPES.STONE;
               // Ore clusters based on depth and noise
@@ -5241,7 +5254,7 @@
         const geo = new THREE.BoxGeometry(1, 1, 1);
         for (let type in this.typeCounts) {
           if (this.typeCounts[type] > 0) {
-            let mesh = new THREE.InstancedMesh(geo, MATERIALS[type], this.typeCounts[type] + 100);
+            let mesh = new THREE.InstancedMesh(geo, MATERIALS[type], this.typeCounts[type] + 50);
             mesh.castShadow = true; mesh.receiveShadow = true;
             this.group.add(mesh);
             this.meshesByType[type] = mesh;
@@ -5276,7 +5289,7 @@
         let type = this.blocks.get(mapKey);
         if (type && y > -5) {
           this.blocks.delete(mapKey);
-          this.rebuildAll();
+          this._dirty = true; // Mark for batched rebuild instead of immediate
           return type;
         }
         return null;
@@ -5287,12 +5300,24 @@
       }
     }
 
+    // Flush any chunks that were marked dirty by block destruction (batched rebuild)
+    function flushDirtyChunks() {
+      for (let [key, chunk] of activeChunks) {
+        if (chunk._dirty) {
+          chunk.rebuildAll();
+          chunk._dirty = false;
+        }
+      }
+    }
+
     function updateChunks() {
       let viewPos = (currentVehicle && !currentVehicle.isDead) ? currentVehicle.pos : player.pos;
       let px = Math.floor(viewPos.x / CHUNK_SIZE);
       let pz = Math.floor(viewPos.z / CHUNK_SIZE);
-      // Increase view distance when driving for lookahead
-      let vd = (currentVehicle && !currentVehicle.isDead) ? VIEW_DISTANCE + 2 : VIEW_DISTANCE;
+      // Increase view distance when driving for lookahead (reduced on mobile)
+      let drivingBonus = isMobileDevice ? 1 : 2;
+      let baseVD = isMobileDevice ? 3 : VIEW_DISTANCE;
+      let vd = (currentVehicle && !currentVehicle.isDead) ? baseVD + drivingBonus : baseVD;
       let keep = new Set();
       for (let x = px - vd; x <= px + vd; x++) {
         for (let z = pz - vd; z <= pz + vd; z++) {
@@ -5898,7 +5923,8 @@
         if (p.pos.distanceToSquared(player.pos) > CHUNK_SIZE * CHUNK_SIZE * 9 || p.isDead) { p.dispose(); return false; }
         return true;
       });
-      while (vehicles.length < 25) {
+      let maxVehicles = isMobileDevice ? 15 : 25;
+      while (vehicles.length < maxVehicles) {
         let r = CHUNK_SIZE + Math.random() * CHUNK_SIZE * 2, angle = Math.random() * Math.PI * 2;
         let cx = player.pos.x + Math.cos(angle) * r, cz = player.pos.z + Math.sin(angle) * r;
         // Don't spawn civilian cars in airport zone
@@ -5929,9 +5955,11 @@
           vehicles.push(p);
         }
       }
-      // Spawn boats in ocean zones
+      // Spawn boats in ocean zones (with safety cap to prevent infinite loops)
       let boatCount = vehicles.filter(v => v.type === 'BOAT' && !v.isDead).length;
-      while (boatCount < 6) {
+      let boatAttempts = 0;
+      while (boatCount < 6 && boatAttempts < 30) {
+        boatAttempts++;
         // Spawn boats in the southern ocean area
         let bx = -300 + Math.random() * 600;
         let bz = 350 + Math.random() * 300;
@@ -5945,7 +5973,8 @@
           boatCount++;
         }
       }
-      while (peds.filter(p => p.type === 'CIVILIAN').length < 20) {
+      let maxCivilians = isMobileDevice ? 10 : 20;
+      while (peds.filter(p => p.type === 'CIVILIAN').length < maxCivilians) {
         let r = CHUNK_SIZE / 2 + Math.random() * CHUNK_SIZE, angle = Math.random() * Math.PI * 2;
         peds.push(new Pedestrian('CIVILIAN', player.pos.x + Math.cos(angle) * r, player.pos.z + Math.sin(angle) * r));
       }
@@ -6861,6 +6890,8 @@
       
       if (!isPaused) {
         physicsAccumulator += frameTime;
+        // Cap accumulator to prevent spiral of death (max 4 physics steps per frame)
+        if (physicsAccumulator > FIXED_DT * 4) physicsAccumulator = FIXED_DT * 4;
         customUniforms.time.value += frameTime;
         while (physicsAccumulator >= FIXED_DT) {
           if (isPlaying) updateGameLogic(FIXED_DT);
@@ -6898,6 +6929,9 @@
           window._dustParticles.geometry.attributes.position.needsUpdate = true;
         }
       }
+
+      // Flush batched chunk rebuilds before rendering
+      flushDirtyChunks();
 
       // USE EFFECT COMPOSER INSTEAD OF STANDARD RENDERER
       if (composer) composer.render();
@@ -7291,7 +7325,7 @@
         if (copSpawnTimer <= 0) {
           let copVehicles = vehicles.filter(v => v.type === 'COP' || v.type === 'ARMY' || v.type === 'TANK').length;
           let copPeds = peds.filter(p => p.type === 'COP' || p.type === 'ARMY').length;
-          let maxCops = wantedLevel * 3;
+          let maxCops = wantedLevel * (isMobileDevice ? 2 : 3);
           if (copVehicles + copPeds < maxCops * 2) {
              spawnCop();
              copSpawnTimer = 4.0 / wantedLevel; // Cops arrive faster
