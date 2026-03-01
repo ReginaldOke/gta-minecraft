@@ -5062,13 +5062,15 @@
         else if (this.nos < 100) { this.nos += 10 * dt; }
         speedMult *= extraSpeed;
 
-        this.vel.add(forward.clone().multiplyScalar(inputAccel * 50 * speedMult * dt));
-        this.vel.x *= (inWater ? 0.8 : 0.94); this.vel.z *= (inWater ? 0.8 : 0.94);
+        let accelBase = isMobileDevice ? 50 : 55; // 10% faster on desktop
+        this.vel.add(forward.clone().multiplyScalar(inputAccel * accelBase * speedMult * dt));
+        let dampBase = isMobileDevice ? 0.94 : 0.945; // Slightly less drag on desktop for higher top speed
+        this.vel.x *= (inWater ? 0.8 : dampBase); this.vel.z *= (inWater ? 0.8 : dampBase);
         let fwdSpeed = this.vel.dot(forward), latSpeed = this.vel.dot(right);
         let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
 
         // Steering: gradual yaw change for smooth, controllable turning
-        let steerAmount = inWater ? 1.2 : (2.2 + speed * 0.02);
+        let steerAmount = inWater ? 1.2 : (isMobileDevice ? (2.2 + speed * 0.02) : (1.6 + speed * 0.012));
         if (Math.abs(fwdSpeed) > 1 && !inWater) this.yaw -= inputSteer * steerAmount * dt * Math.sign(fwdSpeed);
 
         // Drift grip model: grip drops with speed + steering angle - more drifty
