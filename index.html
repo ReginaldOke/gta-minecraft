@@ -654,7 +654,8 @@
         font-size: 12px !important;
       }
       /* Ensure right-side buttons don't overflow */
-      #swap-btn, #pause-btn {
+      #swap-btn { display: none !important; }
+      #pause-btn {
         padding: 4px 8px !important;
         font-size: 11px !important;
       }
@@ -668,9 +669,9 @@
         max-width: 45vw;
         text-align: right;
       }
-      /* Hotbar: move up above action buttons, smaller slots */
+      /* Hotbar: move up well above joystick/action buttons */
       #hotbar {
-        bottom: 100px !important;
+        bottom: 170px !important;
       }
       #hotbar .hotbar-slot {
         width: 32px !important;
@@ -900,7 +901,7 @@
   <div id="phone-ui" style="display:none;">
     <div class="phone-header">Message from: Boss</div>
     <div id="phone-text"></div>
-    <div class="phone-dismiss" id="phone-dismiss">tap to dismiss</div>
+    <div class="phone-dismiss" id="phone-dismiss"></div>
   </div>
 
   <div id="mission-success"></div>
@@ -936,7 +937,7 @@
       </div>
       <div>
         <div style="text-align: right; margin-bottom: 5px;">
-          <button id="swap-btn" onclick="cycleWeapon()" style="display:none; background: rgba(255,180,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Swap</button><button id="desktop-build-btn" onclick="toggleBuildMode()" style="display:none; background: rgba(255,204,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Build [Shift]</button><button id="pause-btn" onclick="togglePause()" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">Pause [P]</button>
+          <button id="swap-btn" onclick="cycleWeapon()" style="display:none; background: rgba(255,180,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Swap</button><button id="desktop-build-btn" onclick="toggleBuildMode()" style="display:none; background: rgba(255,204,0,0.3); border: 1px solid #ffcc00; color: #ffcc00; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto; margin-right: 6px;">Build [Shift]</button><button id="pause-btn" onclick="togglePause()" ontouchstart="event.preventDefault(); event.stopPropagation(); togglePause();" style="background: rgba(255,255,255,0.2); border: 1px solid #fff; color: white; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold; pointer-events: auto;">Pause [P]</button>
         </div>
         <div id="wanted-level" class="stars"><span id="s1">★</span><span id="s2">★</span><span id="s3">★</span><span id="s4">★</span><span id="s5">★</span></div>
         <div id="objective-text">MISSION 1: ROB THE BANK</div>
@@ -1207,6 +1208,28 @@
         drawNoise(ctx, '#666', '#444', 0.5);
         ctx.strokeStyle = '#333'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 64, 64);
         rtx.fillStyle = '#555555'; rtx.fillRect(0, 0, 64, 64);
+      } else if (type === 'STONE') {
+        ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 64, 64);
+        drawNoise(ctx, '#999', '#6a6a6a', 0.4);
+        drawNoise(btx, '#aaa', '#555', 0.5);
+      } else if (type === 'IRON_ORE') {
+        ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 64, 64);
+        drawNoise(ctx, '#999', '#6a6a6a', 0.4);
+        // Iron ore spots (tan/beige)
+        for (let i = 0; i < 8; i++) { let ox = Math.floor(Math.random()*52)+4, oy = Math.floor(Math.random()*52)+4; ctx.fillStyle = '#c8a882'; ctx.fillRect(ox, oy, 8, 8); ctx.fillStyle = '#d4b896'; ctx.fillRect(ox+2, oy+2, 4, 4); }
+        drawNoise(btx, '#aaa', '#555', 0.5);
+      } else if (type === 'COAL_ORE') {
+        ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 64, 64);
+        drawNoise(ctx, '#999', '#6a6a6a', 0.4);
+        // Coal spots (black)
+        for (let i = 0; i < 8; i++) { let ox = Math.floor(Math.random()*52)+4, oy = Math.floor(Math.random()*52)+4; ctx.fillStyle = '#1a1a1a'; ctx.fillRect(ox, oy, 8, 8); ctx.fillStyle = '#2a2a2a'; ctx.fillRect(ox+2, oy+2, 4, 4); }
+        drawNoise(btx, '#aaa', '#555', 0.5);
+      } else if (type === 'DIAMOND_ORE') {
+        ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 64, 64);
+        drawNoise(ctx, '#999', '#6a6a6a', 0.4);
+        // Diamond spots (light blue/cyan)
+        for (let i = 0; i < 6; i++) { let ox = Math.floor(Math.random()*52)+4, oy = Math.floor(Math.random()*52)+4; ctx.fillStyle = '#4de8e0'; ctx.fillRect(ox, oy, 8, 8); ctx.fillStyle = '#7df4ef'; ctx.fillRect(ox+2, oy+2, 4, 4); }
+        drawNoise(btx, '#aaa', '#555', 0.5);
       }
       const texMap = new THREE.CanvasTexture(c); texMap.magFilter = THREE.NearestFilter; texMap.minFilter = THREE.NearestFilter;
       const texBump = new THREE.CanvasTexture(b); texBump.magFilter = THREE.NearestFilter; texBump.minFilter = THREE.NearestFilter;
@@ -1285,7 +1308,7 @@
       return 'OCEAN';
     }
     const TYPES = {
-      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25, YELLOW: 26, GREEN: 27
+      EMPTY: 0, GRASS: 1, ROAD: 2, BRICK: 3, GLASS: 4, CONCRETE: 5, GOLD: 6, LIGHT: 7, WOOD: 8, DIRT: 9, STEEL: 10, WATER: 11, LEAVES: 12, HIGHWAY: 13, BLUE: 14, WHITE: 15, RED: 16, BRICK_RED: 17, BRICK_BROWN: 18, PLASTER_LIGHT: 19, PLASTER_WARM: 20, CONCRETE_DARK: 21, GLASS_BLUE: 22, GLASS_DARK: 23, SIDEWALK: 24, RAIL: 25, YELLOW: 26, GREEN: 27, STONE: 28, IRON_ORE: 29, COAL_ORE: 30, DIAMOND_ORE: 31
     };
     const MATERIALS = {};
     const MAX_PARTICLES = 300;
@@ -1335,8 +1358,9 @@
     let blockInventory = {}; // { blockType: count }
     let selectedBlockType = TYPES.BRICK;
     let totalBlocks = 0;
-    const BLOCK_NAMES = { [TYPES.GRASS]: 'Grass', [TYPES.BRICK]: 'Brick', [TYPES.GLASS]: 'Glass', [TYPES.CONCRETE]: 'Concrete', [TYPES.GOLD]: 'Gold', [TYPES.WOOD]: 'Wood', [TYPES.DIRT]: 'Dirt', [TYPES.STEEL]: 'Steel', [TYPES.LEAVES]: 'Leaves', [TYPES.RED]: 'Red', [TYPES.BLUE]: 'Blue', [TYPES.WHITE]: 'White', [TYPES.YELLOW]: 'Yellow', [TYPES.GREEN]: 'Green' };
-    const BLOCK_COLORS = { [TYPES.GRASS]: '#4caf50', [TYPES.BRICK]: '#8b4513', [TYPES.GLASS]: '#87ceeb', [TYPES.CONCRETE]: '#999', [TYPES.GOLD]: '#ffd700', [TYPES.WOOD]: '#8b6914', [TYPES.DIRT]: '#6b4226', [TYPES.STEEL]: '#bbb', [TYPES.LEAVES]: '#2d6b30', [TYPES.RED]: '#e53935', [TYPES.BLUE]: '#1e88e5', [TYPES.WHITE]: '#eee', [TYPES.YELLOW]: '#fdd835', [TYPES.GREEN]: '#43a047' };
+    const BLOCK_NAMES = { [TYPES.GRASS]: 'Grass', [TYPES.BRICK]: 'Brick', [TYPES.GLASS]: 'Glass', [TYPES.CONCRETE]: 'Concrete', [TYPES.GOLD]: 'Gold', [TYPES.WOOD]: 'Wood', [TYPES.DIRT]: 'Dirt', [TYPES.STEEL]: 'Steel', [TYPES.LEAVES]: 'Leaves', [TYPES.RED]: 'Red', [TYPES.BLUE]: 'Blue', [TYPES.WHITE]: 'White', [TYPES.YELLOW]: 'Yellow', [TYPES.GREEN]: 'Green', [TYPES.STONE]: 'Stone', [TYPES.IRON_ORE]: 'Iron Ore', [TYPES.COAL_ORE]: 'Coal Ore', [TYPES.DIAMOND_ORE]: 'Diamond Ore' };
+    const BLOCK_COLORS = { [TYPES.GRASS]: '#4caf50', [TYPES.BRICK]: '#8b4513', [TYPES.GLASS]: '#87ceeb', [TYPES.CONCRETE]: '#999', [TYPES.GOLD]: '#ffd700', [TYPES.WOOD]: '#8b6914', [TYPES.DIRT]: '#6b4226', [TYPES.STEEL]: '#bbb', [TYPES.LEAVES]: '#2d6b30', [TYPES.RED]: '#e53935', [TYPES.BLUE]: '#1e88e5', [TYPES.WHITE]: '#eee', [TYPES.YELLOW]: '#fdd835', [TYPES.GREEN]: '#43a047', [TYPES.STONE]: '#808080', [TYPES.IRON_ORE]: '#c8a882', [TYPES.COAL_ORE]: '#333', [TYPES.DIAMOND_ORE]: '#4de8e0' };
+    const BLOCK_ICONS = {};
     let blockPickups = []; // Mini rotating block pickups in world
     let ghostBlock = null; // Preview mesh for block placement
     let miningTarget = null; // { x, y, z, progress, type }
@@ -1354,24 +1378,25 @@
 
     // --- Store / Inventory ---
     const STORE_ITEMS = [
-      { id: 'health_pack', name: 'Health Pack', price: 50000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
-      { id: 'armor', name: 'Body Armor', price: 15000, icon: '🛡️', type: 'equipment', desc: 'Absorbs 500 damage' },
+      { id: 'health_pack', name: 'Health Pack', price: 200000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
+      { id: 'armor', name: 'Body Armor', price: 60000, icon: '🛡️', type: 'equipment', desc: 'Absorbs 500 damage' },
       { id: 'rocket', name: 'Rocket Launcher', price: 8000, icon: '🚀', type: 'weapon', desc: '5-block blast radius!' },
-      { id: 'grenade', name: 'Grenades (x5)', price: 5000, icon: '💣', type: 'weapon', desc: 'Hold shoot to throw' },
-      { id: 'suit', name: 'Business Suit', price: 1500, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
-      { id: 'balaclava', name: 'Balaclava', price: 500, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
-      { id: 'minecraft_skin', name: 'Classic Steve', price: 2000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
-      { id: 'gta_outfit', name: 'Street OG', price: 3000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
-      { id: 'tattoo', name: 'Sleeve Tattoos', price: 3000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
-      { id: 'spray', name: 'Spray Can', price: 50000, icon: '🎨', type: 'tool', desc: 'Tag the city' },
-      { id: 'buy_car', name: 'Sports Car', price: 100000, icon: '🏎️', type: 'vehicle', desc: 'Fast red convertible!' },
-      { id: 'buy_tank', name: 'Tank', price: 300000, icon: '🪖', type: 'vehicle', desc: 'Armored & deadly' },
-      { id: 'buy_plane', name: 'Plane', price: 800000, icon: '✈️', type: 'vehicle', desc: 'Take to the skies!' },
-      { id: 'buy_flycar', name: 'Flying Car', price: 900000, icon: '🛸', type: 'vehicle', desc: 'Car that flies!' }
+      { id: 'grenade', name: 'Grenades (x5)', price: 20000, icon: '💣', type: 'weapon', desc: 'Hold shoot to throw' },
+      { id: 'suit', name: 'Business Suit', price: 6000, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
+      { id: 'balaclava', name: 'Balaclava', price: 2000, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
+      { id: 'minecraft_skin', name: 'Classic Steve', price: 8000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
+      { id: 'gta_outfit', name: 'Street OG', price: 12000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
+      { id: 'tattoo', name: 'Sleeve Tattoos', price: 12000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
+      { id: 'spray', name: 'Spray Can', price: 200000, icon: '🎨', type: 'tool', desc: 'Tag the city' },
+      { id: 'buy_car', name: 'Sports Car', price: 400000, icon: '🏎️', type: 'vehicle', desc: 'Fast red convertible!' },
+      { id: 'buy_tank', name: 'Tank', price: 1200000, icon: '🪖', type: 'vehicle', desc: 'Armored & deadly' },
+      { id: 'buy_plane', name: 'Plane', price: 3200000, icon: '✈️', type: 'vehicle', desc: 'Take to the skies!' },
+      { id: 'buy_flycar', name: 'Flying Car', price: 3600000, icon: '🛸', type: 'vehicle', desc: 'Car that flies!' }
     ];
     let playerInventory = new Set();
     let currentWeapon = 'pistol';
     let storeOpen = false;
+    let storePurchases = []; // Track purchases in current store session
     // Weapon cycling system: Shift toggles between weapons and block mode
     let playerWeapons = [
       { id: 'pistol', name: 'Pistol', projSpeed: 200, projSize: 0.35, projColor: 0xffff00, fireRate: 200, auto: false }
@@ -1400,7 +1425,7 @@
         ]},
       { id: 1, name: 'GETAWAY', objective: 'MISSION 2: FIND A CAR & LOSE THE COPS',
         target: [-504, 1, 24], reward: 5000,
-        phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house on Grove Street. Lose those cops!",
+        phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house out west. Lose those cops!",
         rewards: [
           { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
           { icon: '🏎️', text: 'Driving Skills Improved!', action: 'drive_skill' }
@@ -1421,7 +1446,7 @@
         ]},
       { id: 4, name: 'DEMOLITION', objective: 'MISSION 5: DESTROY THE CAR PARK',
         target: [216, 1, -24], reward: 15000,
-        phoneStart: "Boss: See that multi-story car park downtown? Head over there and destroy at least 10% of the blocks. Use your rocket launcher to blow it apart piece by piece!",
+        phoneStart: "Boss: See that multi-story car park downtown? Head over there and blast a hole in it! Destroy 50 blocks to bring it down. Use your rocket launcher!",
         rewards: [
           { icon: '💰', text: '+$15,000 Destruction Pay', action: 'cash15k' },
           { icon: '💥', text: 'Demolition Expert!', action: 'explosion_expert' }
@@ -1533,17 +1558,22 @@
       currentPhoneMessage = text;
       let phone = document.getElementById('phone-ui');
       document.getElementById('phone-text').innerText = text;
+      // Set dismiss text based on platform
+      let dismissEl = document.getElementById('phone-dismiss');
+      if (dismissEl) dismissEl.innerText = isMobileDevice ? 'tap to dismiss' : '[K] to dismiss';
       let pauseMissionEl = document.getElementById('pause-mission-text');
       if (pauseMissionEl) pauseMissionEl.innerText = text;
       phone.style.display = 'flex';
       phone.classList.remove('active');
       void phone.offsetWidth;
       phone.classList.add('active');
+      // Desktop gets 1.5x longer display time
+      let actualDuration = isMobileDevice ? duration : Math.round(duration * 1.5);
       if (phone._hideTimer) clearTimeout(phone._hideTimer);
       phone._hideTimer = setTimeout(() => {
         phone.classList.remove('active');
         setTimeout(() => { phone.style.display = 'none'; }, 700); // hide after slide-out animation
-      }, duration);
+      }, actualDuration);
     }
 
     function dismissPhone() {
@@ -1560,18 +1590,24 @@
     window.debugFly = function() { interactVehicle(); };
     window.debugVehicles = function() { return vehicles.filter(v => v.type === 'PLANE').map(v => ({x:Math.round(v.pos.x), y:Math.round(v.pos.y), z:Math.round(v.pos.z), dead:v.isDead})); };
     window.debugSuccess = function() { triggerMissionSuccess(); };
-    window.debugState = function() { return { missionIndex, state: mission.state, active: mission.active, isPaused, isPlaying, storeOpen }; };
+    window.debugState = function() { return { missionIndex, state: mission.state, active: mission.active, isPaused, isPlaying, storeOpen, carparkTotalBlocks, carparkBlocksDestroyed }; };
+    window.debugGetBlock = function(x, y, z) { return getBlock(x, y, z); };
     window.togglePause = function() {
       if (!isPlaying || mission.state === 'SUCCESS') return;
       if (storeOpen) { closeStore(); return; }
       isPaused = !isPaused;
       if (isPaused) {
-        document.exitPointerLock();
+        try { document.exitPointerLock(); } catch(e) {}
         document.getElementById('pause-screen').style.display = 'flex';
+        if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
         if (radioAudio) radioAudio.pause();
       } else {
         document.getElementById('pause-screen').style.display = 'none';
-        renderer.domElement.requestPointerLock();
+        if (isMobileDevice) {
+          document.getElementById('mobile-controls').style.display = 'block';
+        } else {
+          renderer.domElement.requestPointerLock();
+        }
         if (radioAudio && radioStarted) radioAudio.play().catch(() => {});
       }
     };
@@ -1852,6 +1888,7 @@
     // --- Store System ---
     window.openStore = function() {
       storeOpen = true; isPaused = true;
+      storePurchases = []; // Reset purchases for this session
       try { document.exitPointerLock(); } catch(e) {}
       // Hide phone so it doesn't overlap shop
       let phoneUI = document.getElementById('phone-ui');
@@ -1887,6 +1924,16 @@
         triggerMissionSuccess(); // Sets isPaused = true, shows success screen
         return; // Don't resume game - success screen handles transition
       }
+      // Show purchase summary if items were bought
+      if (storePurchases.length > 0) {
+        let totalSpent = storePurchases.reduce((s, p) => s + p.price, 0);
+        let overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.9); border:2px solid #4CAF50; border-radius:12px; padding:20px 30px; color:white; font-family:sans-serif; text-align:center; pointer-events:none; min-width:250px;';
+        let itemsHtml = storePurchases.map(p => '<div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333;"><span>' + p.icon + ' ' + p.name + '</span><span style="color:#4CAF50;">-$' + p.price.toLocaleString() + '</span></div>').join('');
+        overlay.innerHTML = '<h3 style="color:#4CAF50; margin:0 0 10px 0; font-size:18px;">🛒 PURCHASED</h3>' + itemsHtml + '<div style="margin-top:10px; padding-top:8px; border-top:2px solid #4CAF50; font-size:16px; font-weight:bold;">Total: <span style="color:#ff6600;">-$' + totalSpent.toLocaleString() + '</span></div>';
+        document.body.appendChild(overlay);
+        setTimeout(() => { overlay.style.transition = 'opacity 0.5s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 500); }, 2500);
+      }
       // Resume game normally
       isPaused = false;
       if (isMobileDevice) {
@@ -1907,6 +1954,7 @@
       if (!item || score < item.price) return;
       if (playerInventory.has(itemId) && item.type !== 'consumable' && item.type !== 'equipment' && item.type !== 'vehicle' && itemId !== 'grenade') return;
       score -= item.price;
+      storePurchases.push({ name: item.name, icon: item.icon, price: item.price });
       if (item.type !== 'consumable' && item.type !== 'equipment' && itemId !== 'grenade') playerInventory.add(itemId);
       if (itemId === 'health_pack') { playerHealth = maxHealth; }
       else if (itemId === 'armor') {
@@ -2012,9 +2060,10 @@
         '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
         '<span style="color:#aaa;">Release Space to glide down</span><br>' +
         '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
-        '</div>';
+        '</div>' +
+        '<div style="margin-top:12px; color:#888; font-size:14px;">[K] to dismiss</div>';
       document.body.appendChild(overlay);
-      setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 5000);
+      setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 20000);
     }
 
     // --- Block Building System ---
@@ -2039,7 +2088,7 @@
         el.style.display = 'block';
         let selName = BLOCK_NAMES[selectedBlockType] || 'Block';
         let selCount = blockInventory[selectedBlockType] || 0;
-        el.innerHTML = '🧱 ' + totalBlocks + ' | ' + selName + ': ' + selCount + (buildMode ? ' <span style="color:#ffcc00">[BUILD]</span>' : ' <span style="color:#888">[SHIFT]</span>');
+        el.innerHTML = '🧱 ' + totalBlocks + ' | ' + selName + ': ' + selCount + (buildMode ? ' <span style="color:#ffcc00">[BUILD]</span>' : (isMobileDevice ? '' : ' <span style="color:#888">[SHIFT]</span>'));
         el.style.borderColor = buildMode ? '#ffcc00' : '#888';
       } else {
         el.style.display = 'none';
@@ -2049,6 +2098,7 @@
     }
 
     function cycleWeapon() {
+      if (currentVehicle) return; // No weapon/build cycling in vehicles
       // Cycle: weapon0 → weapon1 → ... → blocks → weapon0
       let totalModes = playerWeapons.length + (totalBlocks > 0 ? 1 : 0);
       if (totalModes <= 1 && totalBlocks <= 0) return; // Only 1 weapon, no blocks
@@ -2094,6 +2144,7 @@
     }
 
     window.toggleBuildMode = function() {
+      if (currentVehicle) return; // No build mode in vehicles
       if (totalBlocks <= 0) return;
       if (buildMode) {
         buildMode = false;
@@ -2277,8 +2328,8 @@
         let camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
         let pos = player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
         let target = pos.clone().add(camDir.clone().multiplyScalar(5));
-        let tx = Math.floor(target.x), tz = Math.floor(target.z);
-        for (let ty = Math.floor(target.y) + 5; ty >= -3; ty--) {
+        let tx = Math.round(target.x), tz = Math.round(target.z);
+        for (let ty = Math.round(target.y) + 5; ty >= -3; ty--) {
           if (getBlock(tx, ty, tz) !== TYPES.EMPTY) {
             if (getBlock(tx, ty + 1, tz) === TYPES.EMPTY) {
               setBlockGlobal(tx, ty + 1, tz, selectedBlockType);
@@ -2329,14 +2380,22 @@
     // Raycast from camera to find block position (returns {hit, place, hitType} or null)
     function blockRaycast(maxDist = 7) {
       let camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
-      let pos = player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
+      // In build mode, raycast from camera position for accurate first-person aiming
+      let pos = buildMode ? camera.position.clone() : player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
       let prevX, prevY, prevZ;
-      for (let d = 1; d <= maxDist * 4; d++) {
-        let check = pos.clone().add(camDir.clone().multiplyScalar(d * 0.25));
-        let bx = Math.floor(check.x), by = Math.floor(check.y), bz = Math.floor(check.z);
+      // Use fine steps (0.1) for accurate face detection and grid-snapped placement
+      let steps = maxDist * 10;
+      for (let d = 1; d <= steps; d++) {
+        let check = pos.clone().add(camDir.clone().multiplyScalar(d * 0.1));
+        let bx = Math.round(check.x), by = Math.round(check.y), bz = Math.round(check.z);
         let bt = getBlock(bx, by, bz);
         if (bt !== TYPES.EMPTY) {
-          return { hit: { x: bx, y: by, z: bz }, place: prevX !== undefined ? { x: prevX, y: prevY, z: prevZ } : null, hitType: bt };
+          // Only return place if it's different from hit (proper adjacent cell)
+          let place = null;
+          if (prevX !== undefined && (prevX !== bx || prevY !== by || prevZ !== bz)) {
+            place = { x: prevX, y: prevY, z: prevZ };
+          }
+          return { hit: { x: bx, y: by, z: bz }, place: place, hitType: bt };
         }
         prevX = bx; prevY = by; prevZ = bz;
       }
@@ -2351,7 +2410,7 @@
       let ray = blockRaycast(7);
       if (ray && ray.place && getBlock(ray.place.x, ray.place.y, ray.place.z) === TYPES.EMPTY) {
         ghostBlock.visible = true;
-        ghostBlock.position.set(ray.place.x + 0.5, ray.place.y + 0.5, ray.place.z + 0.5);
+        ghostBlock.position.set(ray.place.x, ray.place.y, ray.place.z);
         // Tint ghost to match selected block color
         let color = parseInt((BLOCK_COLORS[selectedBlockType] || '#fff').replace('#', ''), 16);
         ghostBlock.children[0].material.color.setHex(color); // wireframe
@@ -2431,7 +2490,7 @@
           '<span style="background:rgba(255,255,255,0.15); border:1px solid #fff; color:#ffcc00; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold; font-family:sans-serif;">Right [F] ▶</span>';
         document.body.appendChild(navLabels);
       }
-      if (navLabels) navLabels.style.display = buildMode ? 'flex' : 'none';
+      if (navLabels) navLabels.style.display = (buildMode && !currentVehicle) ? 'flex' : 'none';
       let slots = bar.children;
       for (let i = 0; i < 9; i++) {
         let slot = slots[i];
@@ -2440,10 +2499,23 @@
         let name = BLOCK_NAMES[bType] || '';
         let color = BLOCK_COLORS[bType] || '#333';
         let isSelected = (i === hotbarIndex) && buildMode;
-        slot.style.background = count > 0 ? color : 'rgba(30,30,30,0.7)';
+        let iconUrl = BLOCK_ICONS[bType];
+        if (count > 0 && iconUrl) {
+          slot.style.background = 'url(' + iconUrl + ') center/cover';
+        } else if (count > 0) {
+          slot.style.background = color;
+        } else {
+          slot.style.background = 'rgba(30,30,30,0.7)';
+        }
         slot.style.borderColor = isSelected ? '#ffcc00' : (i === hotbarIndex ? '#aaa' : '#555');
         slot.style.borderWidth = isSelected ? '3px' : '2px';
-        slot.innerHTML = (count > 0 ? '<div style="font-size:10px; font-weight:bold; text-shadow:1px 1px #000;">' + name + '</div><div style="font-size:13px; font-weight:bold; text-shadow:1px 1px #000;">' + count + '</div>' : '<div style="font-size:9px; color:#666;">' + (i + 1) + '</div>');
+        slot.style.imageRendering = 'pixelated';
+        if (count > 0) {
+          slot.innerHTML = '<span style="position:absolute; top:-2px; right:-2px; background:rgba(0,0,0,0.75); color:#fff; font-size:9px; font-weight:bold; min-width:14px; height:14px; line-height:14px; text-align:center; border-radius:7px; padding:0 3px; text-shadow:1px 1px #000; pointer-events:none;">' + count + '</span>';
+          slot.style.position = 'relative';
+        } else {
+          slot.innerHTML = '<div style="font-size:9px; color:#666;">' + (i + 1) + '</div>';
+        }
         slot.style.opacity = count > 0 ? '1' : '0.4';
       }
     }
@@ -2704,10 +2776,18 @@
         this.animate(dt, isMoving ? 10 : 0);
         this.group.position.copy(this.pos);
         this.group.rotation.y = this.yaw;
-        this.gun.rotation.x = this.pitch;
-        // Right arm aims with gun
-        this.armR.rotation.x = Math.PI / 2 + this.pitch;
-        this.armR.rotation.z = 0.15;
+        if (buildMode) {
+          // Build mode: hide gun, normal arm position
+          this.gun.visible = false;
+          // Let walk cycle handle arm swing naturally (from animate())
+          this.armR.rotation.z = 0;
+        } else {
+          // Combat mode: show gun, aim arm
+          this.gun.visible = true;
+          this.gun.rotation.x = this.pitch;
+          this.armR.rotation.x = Math.PI / 2 + this.pitch;
+          this.armR.rotation.z = 0.15;
+        }
         // Left arm swings naturally from walk cycle
         this.armL.rotation.z = 0;
       }
@@ -2749,6 +2829,7 @@
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(blockSize, blockSize, blockSize),
           carMat, w * h * d);
         this.mesh.castShadow = true;
+        this.mesh.frustumCulled = false;
         let i = 0, m = new THREE.Matrix4(), c = new THREE.Color();
         for (let x = 0; x < w; x++) {
           for (let y = 0; y < h; y++) {
@@ -2849,6 +2930,7 @@
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(blockSize, blockSize, blockSize),
           new THREE.MeshStandardMaterial({ roughness: 0.2, metalness: 0.7 }), maxBlocks);
         this.mesh.castShadow = true;
+        this.mesh.frustumCulled = false;
         let i = 0, m = new THREE.Matrix4(), c = new THREE.Color();
         let halfW = fw / 2, halfD = fd / 2;
         // Fuselage (hollow tube)
@@ -2946,6 +3028,7 @@
         let tankMat = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0.1 });
         this.mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(bs, bs, bs), tankMat, maxBlocks);
         this.mesh.castShadow = true;
+        this.mesh.frustumCulled = false;
         let i = 0, m = new THREE.Matrix4(), c = new THREE.Color();
         let tankGreen = 0x3b4d2e, darkGreen = 0x2b3d1e, trackColor = 0x222222;
         // Hull
@@ -2966,6 +3049,7 @@
         let turretMax = tw * th * td + bw * bh * bd + 20;
         this.turretMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(bs, bs, bs), tankMat, turretMax);
         this.turretMesh.castShadow = true;
+        this.turretMesh.frustumCulled = false;
         let ti = 0;
         for (let x = 0; x < tw; x++) for (let y = 0; y < th; y++) for (let z = 0; z < td; z++) {
           let bColor = y === th - 1 ? darkGreen : tankGreen;
@@ -3096,6 +3180,35 @@
       MATERIALS[TYPES.RAIL] = buildPBRMaterial(createTex('RAIL'), { roughness: 0.3, metalness: 0.9 });
       MATERIALS[TYPES.YELLOW] = new THREE.MeshStandardMaterial({ color: 0xddaa00, roughness: 0.8, emissive: 0xddaa00, emissiveIntensity: 0.3 });
       MATERIALS[TYPES.GREEN] = new THREE.MeshStandardMaterial({ color: 0x22aa22, roughness: 0.8, emissive: 0x22aa22, emissiveIntensity: 0.3 });
+      MATERIALS[TYPES.STONE] = buildPBRMaterial(createTex('STONE'));
+      MATERIALS[TYPES.IRON_ORE] = buildPBRMaterial(createTex('IRON_ORE'));
+      MATERIALS[TYPES.COAL_ORE] = buildPBRMaterial(createTex('COAL_ORE'));
+      MATERIALS[TYPES.DIAMOND_ORE] = buildPBRMaterial(createTex('DIAMOND_ORE'), { emissive: 0x2299aa, emissiveIntensity: 0.2 });
+
+      // Build block icon data URLs for 2D hotbar display
+      for (let typeKey in TYPES) {
+        let typeVal = TYPES[typeKey];
+        let mat = MATERIALS[typeVal];
+        if (!mat) continue;
+        if (mat.map && mat.map.image && mat.map.image.toDataURL) {
+          BLOCK_ICONS[typeVal] = mat.map.image.toDataURL();
+        } else if (mat.color) {
+          let ic = document.createElement('canvas'); ic.width = 32; ic.height = 32;
+          let ictx = ic.getContext('2d');
+          ictx.fillStyle = '#' + mat.color.getHexString();
+          ictx.fillRect(0, 0, 32, 32);
+          // Add subtle noise for visual interest
+          for (let x = 0; x < 32; x += 4) {
+            for (let y = 0; y < 32; y += 4) {
+              if (Math.random() > 0.6) {
+                ictx.fillStyle = 'rgba(255,255,255,0.15)';
+                ictx.fillRect(x, y, 4, 4);
+              }
+            }
+          }
+          BLOCK_ICONS[typeVal] = ic.toDataURL();
+        }
+      }
 
       let partGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
       for (let i = 0; i < MAX_PARTICLES; i++) {
@@ -3392,7 +3505,6 @@
       if ('ontouchstart' in window) {
         document.getElementById('mobile-controls').style.display = 'block';
         document.getElementById('pause-btn').innerText = 'Pause';
-        document.getElementById('swap-btn').style.display = 'inline-block';
         setupTouch();
       }
 
@@ -3799,7 +3911,7 @@
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? TYPES.GRASS : TYPES.CONCRETE);
-                // === CUL-DE-SAC (GROVE STREET) SAFE HOUSE ===
+                // === CUL-DE-SAC SAFE HOUSE ===
                 if (isAlley && !isRoad) {
                   let culCX = 24, culHW = 3, culSZ = ROAD_WIDTH, culEZ = 38;
                   let isCulRoad = (lx >= culCX - culHW && lx <= culCX + culHW && lz >= culSZ && lz <= culEZ);
@@ -4340,6 +4452,28 @@
             }
           }
         }
+        // === UNDERGROUND LAYERS (5 blocks deep with ore clusters) ===
+        for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+          for (let lz = 0; lz < CHUNK_SIZE; lz++) {
+            let wx = startX + lx, wz = startZ + lz;
+            // Check if there's a surface block at y=0 (not water/empty)
+            let surfaceBlock = this.blocks.get(lx + ",0," + lz);
+            if (!surfaceBlock || surfaceBlock === TYPES.WATER) continue;
+            // Generate 4 underground layers (y=-1 to y=-4)
+            for (let dy = -1; dy >= -4; dy--) {
+              let oreRoll = hash2D(wx * 0.37 + dy * 13.7, wz * 0.41 + dy * 7.3);
+              let blockType = (dy === -1) ? TYPES.DIRT : TYPES.STONE;
+              // Ore clusters based on depth and noise
+              if (dy <= -2) {
+                if (oreRoll < 0.03) blockType = TYPES.DIAMOND_ORE; // Very rare
+                else if (oreRoll < 0.08) blockType = TYPES.GOLD; // Rare
+                else if (oreRoll < 0.18) blockType = TYPES.IRON_ORE; // Uncommon
+                else if (oreRoll < 0.28) blockType = TYPES.COAL_ORE; // Common
+              }
+              this.setBlock(lx, dy, lz, blockType);
+            }
+          }
+        }
       }
       setBlock(lx, y, lz, type) {
         let mapKey = lx + "," + y + "," + lz;
@@ -4365,6 +4499,17 @@
         for (let [k, type] of this.blocks.entries()) {
           let parts = k.split(',');
           let lx = Number(parts[0]), y = Number(parts[1]), lz = Number(parts[2]);
+          // Skip fully enclosed underground blocks (all 6 neighbors are solid)
+          if (y < 0) {
+            let exposed = false;
+            let dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+            for (let d of dirs) {
+              let nlx = lx + d[0], ny = y + d[1], nlz = lz + d[2];
+              let nk = nlx + "," + ny + "," + nlz;
+              if (!this.blocks.has(nk)) { exposed = true; break; }
+            }
+            if (!exposed) continue; // Don't render fully enclosed blocks
+          }
           matrix.setPosition(this.cx * CHUNK_SIZE + lx, y, this.cz * CHUNK_SIZE + lz);
           this.meshesByType[type].setMatrixAt(this.meshesByType[type].count++, matrix);
         }
@@ -4373,7 +4518,7 @@
       destroyBlock(lx, y, lz) {
         let mapKey = lx + "," + y + "," + lz;
         let type = this.blocks.get(mapKey);
-        if (type && y > -2) {
+        if (type && y > -5) {
           this.blocks.delete(mapKey);
           this.rebuildAll();
           return type;
@@ -4451,14 +4596,15 @@
                 // Secret gold found logic
               }
             }
-            // Mission 5: Track carpark block destruction
+            // Mission 5: Track carpark block destruction (50 block target)
             if (missionIndex === 4 && mission.state === 'DESTROY_CARPARK' && cx === 4 && cz === -1) {
               carparkBlocksDestroyed++;
-              let pct = carparkTotalBlocks > 0 ? Math.floor((carparkBlocksDestroyed / carparkTotalBlocks) * 100) : 0;
-              document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: ' + pct + '%';
-              document.getElementById('demo-fill').style.height = Math.min(pct * 10, 100) + '%';
-              document.getElementById('demo-pct').innerText = pct + '%';
-              if (pct >= 10) triggerMissionSuccess();
+              let target = 50;
+              let pct = Math.min(Math.floor((carparkBlocksDestroyed / target) * 100), 100);
+              document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: ' + Math.min(carparkBlocksDestroyed, target) + '/' + target + ' blocks';
+              document.getElementById('demo-fill').style.height = pct + '%';
+              document.getElementById('demo-pct').innerText = Math.min(carparkBlocksDestroyed, target) + '/' + target;
+              if (carparkBlocksDestroyed >= target) triggerMissionSuccess();
             }
           }
           return true;
@@ -4512,10 +4658,10 @@
         // --- PLANE FLIGHT PHYSICS ---
         if (this.type === 'PLANE' && !this.isDead) {
           const fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 30 * dt));
+          this.vel.add(fwd.clone().multiplyScalar(inputAccel * 24 * dt));
           let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
           // Cap plane speed so terrain has time to load
-          if (speed > 40) { let s = 40 / speed; this.vel.x *= s; this.vel.z *= s; speed = 40; }
+          if (speed > 32) { let s = 32 / speed; this.vel.x *= s; this.vel.z *= s; speed = 32; }
           this.isFlying = speed > 12 || this.pos.y > 5;
           if (speed > 2) this.yaw -= inputSteer * 2.5 * dt;
           // Lift & climb (Space key handled in game loop, useNOS for mouse/mobile)
@@ -4584,7 +4730,7 @@
         else if (this.nos < 100) { this.nos += 10 * dt; }
         speedMult *= extraSpeed;
 
-        this.vel.add(forward.clone().multiplyScalar(inputAccel * 80 * speedMult * dt));
+        this.vel.add(forward.clone().multiplyScalar(inputAccel * 64 * speedMult * dt));
         this.vel.x *= (inWater ? 0.8 : 0.96); this.vel.z *= (inWater ? 0.8 : 0.96);
         let fwdSpeed = this.vel.dot(forward), latSpeed = this.vel.dot(right);
         let speed = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
@@ -4818,8 +4964,8 @@
         let inWater = (blockBelow === TYPES.WATER || blockAt === TYPES.WATER);
         this.vel.y -= (inWater ? 5 : 40) * dt;
         
-        let floorY = -3;
-        for (let y = Math.floor(this.pos.y + 1); y >= -3; y--) {
+        let floorY = -5;
+        for (let y = Math.floor(this.pos.y + 1); y >= -5; y--) {
           let b = getBlock(this.pos.x, y, this.pos.z);
           if (b !== TYPES.EMPTY && b !== TYPES.WATER) { floorY = y; break; }
         }
@@ -4833,7 +4979,7 @@
             // Slow approach like Minecraft skeletons - shamble toward player
             if (distSq > 49) {
               let dir = targetPos.clone().sub(this.pos).normalize();
-              let speed = inWater ? 2 : (this.type === 'ARMY' ? 5 : 3.5);
+              let speed = inWater ? 2 : (this.type === 'ARMY' ? 5 : 3.5) * (isMobileDevice ? 0.65 : 1.0);
               this.vel.x = dir.x * speed; this.vel.z = dir.z * speed;
               this.yaw = Math.atan2(-dir.x, -dir.z);
             } else {
@@ -5150,7 +5296,7 @@
               mission.target.copy(ALLEY_POS);
               setWantedLevel(2);
               document.getElementById('objective-text').innerText = 'DRIVE TO THE SAFE ZONE';
-              showPhoneMessage("Boss: Good, you got wheels. Floor it to the safe house on Grove Street out west. Lose those cops!", 15000);
+              showPhoneMessage("Boss: Good, you got wheels. Floor it to the safe house out west. Lose those cops!", 15000);
             }
             // Mission 7: steal tank detection
             if (missionIndex === 6 && mission.state === 'STEAL_TANK' && v.type === 'TANK') {
@@ -5302,7 +5448,13 @@
         if (!isPlaying) return;
         let k = e.key.toLowerCase();
         if (k === 'p') { togglePause(); return; }
-        if (isPaused) return; 
+        if (k === 'k') {
+          dismissPhone();
+          let planeOverlay = document.getElementById('plane-controls-overlay');
+          if (planeOverlay) { planeOverlay.style.transition = 'opacity 0.3s'; planeOverlay.style.opacity = '0'; setTimeout(() => planeOverlay.remove(), 300); }
+          return;
+        }
+        if (isPaused) return;
 
         if (k === 'w' || k === 'z' || k === 'arrowup') { keys.forward = true; hideTutorial(); }
         if (k === 's' || k === 'arrowdown') { keys.backward = true; hideTutorial(); }
@@ -5365,7 +5517,7 @@
           } else {
             player.yaw -= e.movementX * 0.002;
             player.pitch -= e.movementY * 0.002;
-            player.pitch = Math.max(buildMode ? -Math.PI / 2 : -Math.PI / 2.05, Math.min(buildMode ? Math.PI / 2 : Math.PI / 2.05, player.pitch));
+            player.pitch = Math.max(buildMode ? -1.565 : -Math.PI / 2.05, Math.min(buildMode ? 1.565 : Math.PI / 2.05, player.pitch));
           }
         }
       });
@@ -5452,7 +5604,7 @@
               tankAimPitch = Math.max(-Math.PI / 4, Math.min(Math.PI / 6, tankAimPitch));
             } else {
               player.yaw -= (t.clientX - lastLookX) * 0.01; player.pitch -= (t.clientY - lastLookY) * 0.01;
-              player.pitch = Math.max(buildMode ? -Math.PI / 2 : -Math.PI / 2.05, Math.min(buildMode ? Math.PI / 2 : Math.PI / 2.05, player.pitch));
+              player.pitch = Math.max(buildMode ? -1.565 : -Math.PI / 2.05, Math.min(buildMode ? 1.565 : Math.PI / 2.05, player.pitch));
             }
             lastLookX = t.clientX; lastLookY = t.clientY;
           }
@@ -5492,6 +5644,7 @@
       // Mobile build button
       document.getElementById('btn-build').addEventListener('touchstart', (e) => {
         e.preventDefault();
+        if (currentVehicle) return; // No build mode in vehicles
         if (totalBlocks > 0) {
           buildMode = !buildMode;
           // Auto-select first available block when entering build mode
@@ -5792,11 +5945,11 @@
       // Mission 5: Carpark block destruction - proximity triggers the mission phase
       if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 900) {
         mission.state = 'DESTROY_CARPARK';
-        document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK';
+        document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: 0/50 blocks';
         document.getElementById('demolition-progress').style.display = 'block';
         document.getElementById('demo-fill').style.height = '0%';
-        document.getElementById('demo-pct').innerText = '0%';
-        showPhoneMessage("Boss: You're at the carpark. Level this building! Destroy at least 10% of it!", 15000);
+        document.getElementById('demo-pct').innerText = '0/50';
+        showPhoneMessage("Boss: You're at the carpark. Blast a hole in it! Destroy 50 blocks!", 15000);
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
         let islandDist = pPos.distanceToSquared(new THREE.Vector3(ISLAND_X, pPos.y, ISLAND_Z));
@@ -5936,7 +6089,7 @@
             Math.sin(tankAimPitch),
             -Math.cos(tankAimYaw) * Math.cos(tankAimPitch)
           ).normalize();
-          let camDist = 14, camTarget = currentVehicle.pos.clone().add(new THREE.Vector3(0, 3, 0));
+          let camDist = isMobileDevice ? 10 : 14, camTarget = currentVehicle.pos.clone().add(new THREE.Vector3(0, 3, 0));
           let idealCamPos = camTarget.clone().sub(aimDir.clone().multiplyScalar(camDist));
           idealCamPos = getCameraPos(camTarget, idealCamPos);
           camera.position.lerp(idealCamPos, Math.min(1.0, 10 * dt));
@@ -5948,8 +6101,8 @@
         } else {
           let speed = currentVehicle.vel.length();
           let isPlane = currentVehicle.type === 'PLANE';
-          let camDist = isPlane ? (20 + speed * 0.15) : (12 + speed * 0.1);
-          let camHeight = isPlane ? (8 + speed * 0.1) : (5 + speed * 0.05);
+          let camDist = isPlane ? (20 + speed * 0.15) : (isMobileDevice ? (8 + speed * 0.06) : (12 + speed * 0.1));
+          let camHeight = isPlane ? (8 + speed * 0.1) : (isMobileDevice ? (3.5 + speed * 0.03) : (5 + speed * 0.05));
           const camOffset = new THREE.Vector3(Math.sin(currentVehicle.yaw) * camDist, camHeight, Math.cos(currentVehicle.yaw) * camDist);
           let camTarget = currentVehicle.pos.clone().add(new THREE.Vector3(0, isPlane ? 3 : 2, 0));
           let idealCamPos = isPlane ? camTarget.clone().add(camOffset) : getCameraPos(camTarget, currentVehicle.pos.clone().add(camOffset));
@@ -5989,9 +6142,14 @@
         // Show/hide mobile build button
         let buildBtn = document.getElementById('btn-build');
         if (buildBtn) {
-          buildBtn.style.display = totalBlocks > 0 ? 'flex' : 'none';
-          buildBtn.innerText = buildMode ? 'Build ON' : 'Build';
-          buildBtn.style.background = buildMode ? 'rgba(255,204,0,0.6)' : 'rgba(255,204,0,0.3)';
+          buildBtn.style.display = 'flex';
+          if (buildMode) {
+            buildBtn.innerText = 'Shoot';
+            buildBtn.style.background = '#cc2222';
+          } else {
+            buildBtn.innerText = 'Build';
+            buildBtn.style.background = '#2255cc';
+          }
         }
 
         let blockBelow = getBlock(player.pos.x, player.pos.y - 0.5, player.pos.z);
@@ -6001,8 +6159,8 @@
           player.vel.y -= 5 * dt; if (keys.space) player.vel.y = 8;
         } else player.vel.y -= 40 * dt;
         
-        let floorY = -3;
-        for (let y = Math.floor(player.pos.y + 1); y >= -3; y--) {
+        let floorY = -5;
+        for (let y = Math.floor(player.pos.y + 1); y >= -5; y--) {
           let b = getBlock(player.pos.x, y, player.pos.z);
           if (b !== TYPES.EMPTY && b !== TYPES.WATER) { floorY = y; break; }
         }
@@ -6010,7 +6168,7 @@
         const dir = new THREE.Vector3(moveX, 0, moveZ);
         if (dir.lengthSq() > 0.01) dir.normalize(); else dir.set(0, 0, 0);
         dir.applyAxisAngle(_upVec, player.yaw);
-        let pSpeed = inWater ? 6 : (buildMode ? 6 : 15);
+        let pSpeed = inWater ? 6 : (isMobileDevice ? 10 : (buildMode ? 6 : 15));
         let stepX = dir.x * pSpeed * dt, stepZ = dir.z * pSpeed * dt;
         let pCheckY = Math.floor(player.pos.y + 0.5);
         // Step-up collision: try 1 block, then 2 blocks (for stairs/ramps)
@@ -6033,14 +6191,14 @@
         if (nextY - 0.5 <= floorY) { nextY = floorY + 0.5; player.vel.y = 0; }
         player.pos.set(player.pos.x + stepX, nextY, player.pos.z + stepZ);
         player.updatePlayerAnim(dt, moveX !== 0 || moveZ !== 0);
-        // Hide player model in build mode (first-person view)
+        // Hide player in build mode for first-person view
         player.group.visible = !buildMode;
 
         let aimDir = new THREE.Vector3(-Math.sin(player.yaw) * Math.cos(player.pitch), Math.sin(player.pitch), -Math.cos(player.yaw) * Math.cos(player.pitch)).normalize();
         let rightDir = new THREE.Vector3(-Math.cos(player.yaw), 0, Math.sin(player.yaw)).normalize();
-        let camDist = buildMode ? 0.5 : 5;
+        let camDist = buildMode ? 0.5 : (isMobileDevice ? 3 : 5);
         let targetCamFocus = player.pos.clone(); targetCamFocus.y += buildMode ? 2.5 : 2.0;
-        let idealCamPos = targetCamFocus.clone().sub(aimDir.clone().multiplyScalar(camDist)).add(rightDir.clone().multiplyScalar(buildMode ? 0 : 1.5));
+        let idealCamPos = targetCamFocus.clone().sub(aimDir.clone().multiplyScalar(camDist)).add(rightDir.clone().multiplyScalar(buildMode ? 0 : (isMobileDevice ? 0.8 : 1.5)));
         idealCamPos = getCameraPos(targetCamFocus, idealCamPos);
         camera.position.lerp(idealCamPos, Math.min(1.0, 15 * dt));
         camera.lookAt(targetCamFocus.clone().add(aimDir.clone().multiplyScalar(50)));
@@ -6076,13 +6234,14 @@
             let fwd = new THREE.Vector3(-Math.sin(veh.yaw), 0, -Math.cos(veh.yaw));
             let distSq = veh.pos.distanceToSquared(targetPos);
 
+            let copAccelMult = isMobileDevice ? 0.6 : 1.0;
             if (currentVehicle) {
-              accel = 0.7; useNOS = false;
+              accel = 0.7 * copAccelMult; useNOS = false;
               steer = -Math.sign(fwd.cross(dirToPlayer).y) * 1.2;
-              if (distSq < 100) accel = 0.4;
+              if (distSq < 100) accel = 0.4 * copAccelMult;
             } else {
               if (distSq > 900) {
-                accel = 0.5; useNOS = false;
+                accel = 0.5 * copAccelMult; useNOS = false;
                 steer = -Math.sign(fwd.cross(dirToPlayer).y) * 1.0;
               } else {
                 accel = -0.2; steer = 0;
@@ -6103,7 +6262,7 @@
             }
           }
         } else if (!veh.parked) {
-          accel = 0.5;
+          accel = isMobileDevice ? 0.3 : 0.5;
           let onIntersection = (Math.abs(veh.pos.x) % CHUNK_SIZE < ROAD_WIDTH) && (Math.abs(veh.pos.z) % CHUNK_SIZE < ROAD_WIDTH);
           if (onIntersection && trafficLightIsRed) accel = -0.5;
           else {
