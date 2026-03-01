@@ -1363,15 +1363,18 @@
     };
     // Biome system: determines ground type based on world position
     function getBiome(wx, wz) {
-      // Snow: northeast corner (positive x, negative z)
-      if (wx > 500 && wz < -500) return 'SNOW';
-      if (wx > 400 && wz < -400) { let blend = Math.min((wx-400)/100, (-wz-400)/100); if (blend > 0.5) return 'SNOW'; }
-      // Desert: southeast corner (positive x, positive z)
-      if (wx > 500 && wz > 500) return 'DESERT';
-      if (wx > 400 && wz > 400) { let blend = Math.min((wx-400)/100, (wz-400)/100); if (blend > 0.5) return 'DESERT'; }
-      // Mountain: southwest area
-      let mtDist = Math.sqrt((wx + 600) * (wx + 600) + (wz + 200) * (wz + 200));
-      if (mtDist < 120) return 'MOUNTAIN';
+      // Snow: northeast corner (positive x, negative z) - much larger area
+      if (wx > 400 && wz < -400) return 'SNOW';
+      if (wx > 300 && wz < -300) { let blend = Math.min((wx-300)/100, (-wz-300)/100); if (blend > 0.4) return 'SNOW'; }
+      // Desert: southeast corner (positive x, positive z) - much larger area
+      if (wx > 400 && wz > 400) return 'DESERT';
+      if (wx > 300 && wz > 300) { let blend = Math.min((wx-300)/100, (wz-300)/100); if (blend > 0.4) return 'DESERT'; }
+      // Mountain range: southwest - larger range
+      let mtDist = Math.sqrt((wx + 500) * (wx + 500) + (wz + 200) * (wz + 200));
+      if (mtDist < 180) return 'MOUNTAIN';
+      // Second mountain range: northwest
+      let mt2Dist = Math.sqrt((wx + 300) * (wx + 300) + (wz - 500) * (wz - 500));
+      if (mt2Dist < 120) return 'MOUNTAIN';
       return 'NORMAL';
     }
     const MATERIALS = {};
@@ -2186,21 +2189,27 @@
     }
 
     function showPlaneControls() {
-      let overlay = document.createElement('div');
-      overlay.id = 'plane-controls-overlay';
-      overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.85); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
-      overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
-        '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
-        '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
-        '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down + descend<br>' +
-        '<span style="color:#ffcc00; font-weight:bold;">A / D</span> — Steer left / right<br>' +
-        '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
-        '<span style="color:#aaa;">Release Space to glide down</span><br>' +
-        '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
-        '</div>' +
-        '<div style="margin-top:12px; color:#888; font-size:14px;">[K] to dismiss</div>';
-      document.body.appendChild(overlay);
-      setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 20000);
+      if (isMobileDevice) {
+        // Mobile: show controls in the phone UI so they don't block the screen
+        showPhoneMessage("FLIGHT CONTROLS: Use joystick to steer. Tap SHOOT to boost. Hold the JUMP button to fly up. Release to glide down. Tap EXIT to leave plane.", 20000);
+      } else {
+        // Desktop: overlay in center of screen
+        let overlay = document.createElement('div');
+        overlay.id = 'plane-controls-overlay';
+        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.85); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
+        overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
+          '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
+          '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down + descend<br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">A / D</span> — Steer left / right<br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
+          '<span style="color:#aaa;">Release Space to glide down</span><br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
+          '</div>' +
+          '<div style="margin-top:12px; color:#888; font-size:14px;">[K] to dismiss</div>';
+        document.body.appendChild(overlay);
+        setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 20000);
+      }
     }
 
     // --- Block Building System ---
@@ -3855,22 +3864,23 @@
             // Mansion — tall, large
             buildingHeight = 10 + Math.floor(h * 5);
             wallType = TYPES.PLASTER_LIGHT; glassType = TYPES.GLASS_BLUE;
-          } else if (subType > 0.88) {
+          } else if (subType > 0.90) {
             // School/Hospital
             buildingHeight = 8 + Math.floor(h * 4);
-            wallType = subType > 0.915 ? TYPES.BRICK_RED : TYPES.CONCRETE;
-          } else if (subType > 0.78) {
-            // Farm — low barn
-            buildingHeight = h > 0.2 ? 4 + Math.floor(h * 2) : 0;
+            wallType = subType > 0.925 ? TYPES.BRICK_RED : TYPES.CONCRETE;
+          } else if (subType > 0.55) {
+            // Farm — low barn (much more common now)
+            buildingHeight = h > 0.3 ? 4 + Math.floor(h * 2) : 0;
             wallType = TYPES.WOOD; glassType = TYPES.GLASS;
           } else {
-            buildingHeight = h > 0.3 ? 3 + Math.floor(h * 4) : 0;
+            // Most chunks are open fields with scattered houses
+            buildingHeight = h > 0.6 ? 3 + Math.floor(h * 4) : 0;
           }
           let houseColors = [TYPES.PLASTER_LIGHT, TYPES.PLASTER_WARM, TYPES.BRICK_RED, TYPES.BRICK, TYPES.BRICK_BROWN, TYPES.CONCRETE];
-          if (subType <= 0.78) wallType = houseColors[Math.floor(h * 100) % houseColors.length];
+          if (subType <= 0.55) wallType = houseColors[Math.floor(h * 100) % houseColors.length];
         } else if (zone === 'RURAL') {
-          buildingHeight = h > 0.7 ? 4 + Math.floor(h * 3) : 0; // Sparse farmhouses/barns
-          wallType = h > 0.85 ? TYPES.BRICK_RED : TYPES.WOOD;
+          buildingHeight = h > 0.85 ? 4 + Math.floor(h * 3) : 0; // Very sparse farmhouses/barns
+          wallType = h > 0.90 ? TYPES.BRICK_RED : TYPES.WOOD;
           glassType = TYPES.GLASS;
         } else if (zone === 'ISLAND') {
           buildingHeight = 5 + Math.floor(h * 15);
@@ -4130,7 +4140,7 @@
             } else {
               // Standard terrain
               // More green spaces - lower thresholds mean more parks/gardens
-              let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.25) || (zone === 'SUBURBAN' && noise > 0.45) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
+              let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.15) || (zone === 'SUBURBAN' && noise > 0.30) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
               // Mountain biome: always nature ground, no sidewalks/concrete
               if (biome === 'MOUNTAIN') isPark = true;
               if (isSidewalk && !isPark) {
@@ -4458,7 +4468,7 @@
                     }
 
                     // Farm chunks: crops, hay bales, silos
-                    if (subType > 0.78 && subType <= 0.88) {
+                    if (subType > 0.55 && subType <= 0.90) {
                       // Crop rows
                       if (lx > margin + 2 && lx < CHUNK_SIZE - margin - 2 && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2) {
                         if (lx % 2 === 0 && hash2D(wx + 20, wz + 20) > 0.3) {
@@ -4518,7 +4528,7 @@
                     }
 
                     // School/Hospital chunks: playground, parking
-                    if (subType > 0.88 && subType <= 0.95) {
+                    if (subType > 0.90 && subType <= 0.95) {
                       let isSchool = subType <= 0.915;
                       // Playground / parking area
                       if (lx > margin + 8 && lx < CHUNK_SIZE - margin - 4 && lz > margin + 1 && lz < margin + 5) {
@@ -4550,7 +4560,7 @@
                     }
 
                     // Varied yard trees (different sizes and types) - biome-specific
-                    if (hash2D(wx + 10, wz + 10) > 0.975) {
+                    if (hash2D(wx + 10, wz + 10) > 0.993) {
                       if (biome === 'DESERT') {
                         // Cactus
                         let cH = 3 + Math.floor(hash2D(wx + 15, wz + 15) * 3);
@@ -4634,9 +4644,10 @@
                 }
 
                 // Trees - biome-specific
-                let treeChance = zone === 'RURAL' ? 0.975 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.98 : 0.95));
-                if (biome === 'MOUNTAIN') treeChance = hill > 30 ? 1.0 : 0.99; // Very sparse on mountains, none above treeline
-                if (biome === 'DESERT') treeChance = 0.995; // Very sparse in desert
+                let treeChance = zone === 'RURAL' ? 0.993 : (zone === 'ISLAND' ? 0.91 : (zone === 'SUBURBAN' ? 0.995 : 0.97));
+                if (biome === 'MOUNTAIN') treeChance = hill > 30 ? 1.0 : 0.997;
+                if (biome === 'DESERT') treeChance = 0.998;
+                if (biome === 'SNOW') treeChance = Math.max(treeChance, 0.993); // Fewer trees in snow
 
                 if (hash2D(wx, wz) > treeChance) {
                   if (biome === 'DESERT') {
