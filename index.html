@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>JEE TEE AYY SIX</title>
   
+  <!-- CrazyGames SDK v3 -->
+  <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+
   <!-- Add an import map to fix the bare "three" module specifier error -->
   <script type="importmap">
     {
@@ -1149,6 +1152,82 @@
     import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
     import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
+    // --- CrazyGames SDK Wrapper ---
+    const CG = {
+      sdk: null,
+      ready: false,
+      adPlaying: false,
+      async init() {
+        try {
+          if (window.CrazyGames && window.CrazyGames.SDK) {
+            this.sdk = window.CrazyGames.SDK;
+            await this.sdk.init();
+            this.ready = true;
+            console.log('[CrazyGames] SDK initialized');
+          } else {
+            console.log('[CrazyGames] SDK not available (local/adblocker)');
+          }
+        } catch (e) {
+          console.warn('[CrazyGames] SDK init failed:', e);
+        }
+      },
+      gameplayStart() {
+        try { if (this.ready) this.sdk.game.gameplayStart(); } catch(e) {}
+      },
+      gameplayStop() {
+        try { if (this.ready) this.sdk.game.gameplayStop(); } catch(e) {}
+      },
+      happyTime() {
+        try { if (this.ready) this.sdk.game.happyTime(); } catch(e) {}
+      },
+      loadingStart() {
+        try { if (this.ready) this.sdk.game.loadingStart(); } catch(e) {}
+      },
+      loadingStop() {
+        try { if (this.ready) this.sdk.game.loadingStop(); } catch(e) {}
+      },
+      async showMidgame() {
+        if (!this.ready || this.adPlaying) return;
+        this.adPlaying = true;
+        _muteGameAudio();
+        try {
+          await this.sdk.ad.requestAd('midgame');
+        } catch(e) {
+          console.warn('[CrazyGames] Midgame ad error:', e);
+        }
+        this.adPlaying = false;
+        _unmuteGameAudio();
+      },
+      async showRewarded(onSuccess) {
+        if (!this.ready || this.adPlaying) { if (onSuccess) onSuccess(); return; }
+        this.adPlaying = true;
+        _muteGameAudio();
+        try {
+          const result = await this.sdk.ad.requestAd('rewarded');
+          if (result && !result.error) {
+            if (onSuccess) onSuccess();
+          }
+        } catch(e) {
+          console.warn('[CrazyGames] Rewarded ad error:', e);
+        }
+        this.adPlaying = false;
+        _unmuteGameAudio();
+      }
+    };
+
+    function _muteGameAudio() {
+      try {
+        if (typeof radioAudio !== 'undefined' && radioAudio) { radioAudio._wasPlaying = !radioAudio.paused; radioAudio.pause(); }
+      } catch(e) {}
+    }
+    function _unmuteGameAudio() {
+      try {
+        if (typeof radioAudio !== 'undefined' && radioAudio && radioAudio._wasPlaying && typeof radioStarted !== 'undefined' && radioStarted && !isPaused) {
+          radioAudio.play().catch(() => {});
+        }
+      } catch(e) {}
+    }
+
     // --- Performance Pre-allocated Vectors ---
     const _tv1 = new THREE.Vector3();
     const _tv2 = new THREE.Vector3();
@@ -1729,6 +1808,7 @@
         document.getElementById('pause-screen').style.display = 'flex';
         if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
         if (radioAudio) radioAudio.pause();
+        CG.gameplayStop();
       } else {
         document.getElementById('pause-screen').style.display = 'none';
         if (isMobileDevice) {
@@ -1737,10 +1817,13 @@
           renderer.domElement.requestPointerLock();
         }
         if (radioAudio && radioStarted) radioAudio.play().catch(() => {});
+        CG.gameplayStart();
       }
     };
 
-    window.continueGame = function() {
+    window.continueGame = async function() {
+      // Show midgame ad between missions
+      await CG.showMidgame();
       let justCompletedMission = missionIndex;
       document.getElementById('mission-success').style.display = 'none';
       missionIndex++;
@@ -1752,6 +1835,7 @@
       }
       isPaused = false;
       isPlaying = true;
+      CG.gameplayStart();
       if (!isMobileDevice) renderer.domElement.requestPointerLock();
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
       // Barricade mission reward: spawn indestructible flying car
@@ -1906,6 +1990,8 @@
       mission.state = 'SUCCESS'; mission.active = false;
       isPaused = true; // Pause game during success screen
       playerHealth = maxHealth; // Heal player so they can't die during success cinematic
+      CG.gameplayStop();
+      CG.happyTime();
       try { document.exitPointerLock(); } catch(e) {}
       if (waypointArrow3D) waypointArrow3D.visible = false;
       // Hide death screen if it was showing
@@ -2074,6 +2160,7 @@
     // --- Store System ---
     window.openStore = function() {
       storeOpen = true; isPaused = true;
+      CG.gameplayStop();
       storePurchases = []; // Reset purchases for this session
       try { document.exitPointerLock(); } catch(e) {}
       // Hide phone so it doesn't overlap shop
@@ -2122,6 +2209,7 @@
       }
       // Resume game normally
       isPaused = false;
+      CG.gameplayStart();
       if (isMobileDevice) {
         document.getElementById('mobile-controls').style.display = 'block';
       } else {
@@ -2848,6 +2936,7 @@
         let phoneMsg = MISSIONS[0].phoneStart;
         _phoneTimeout = setTimeout(() => showPhoneMessage(phoneMsg, 20000), 6000);
         startRadio();
+        CG.gameplayStart();
         let isMobile = ('ontouchstart' in window) || window.matchMedia('(pointer: coarse)').matches;
         if (!isMobile) renderer.domElement.requestPointerLock();
       }, 50);
@@ -3354,7 +3443,10 @@
     }
 
     // --- Initialization ---
-    function init() {
+    async function init() {
+      // Initialize CrazyGames SDK first
+      await CG.init();
+      CG.loadingStart();
       scene = new THREE.Scene();
       scene.fog = new THREE.FogExp2(0x88b8d8, isMobileDevice ? 0.0018 : 0.0010);
       camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 2500);
@@ -3813,6 +3905,7 @@
       shopkeeperNPC.isShopkeeper = true;
       peds.push(shopkeeperNPC);
 
+      CG.loadingStop();
       requestAnimationFrame(animate);
     }
 
@@ -6466,33 +6559,56 @@
       // Don't show death screen if mission success is showing
       if (mission.state === 'SUCCESS') return;
       isPlaying = false; isPaused = true;
+      CG.gameplayStop();
       try { document.exitPointerLock(); } catch(e) {}
       if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'none';
       let restartMission = Math.max(0, missionIndex > 0 ? missionIndex - 1 : 0);
       // If current mission was in progress, restart it; if between missions restart last completed
       let restartIdx = mission.active ? missionIndex : restartMission;
-      document.getElementById('start-screen').style.display = 'flex';
-      document.getElementById('start-screen').innerHTML =
-        '<h1 style="color:red; font-size:64px; text-shadow:4px 4px #000; letter-spacing: 5px;">WASTED</h1>' +
-        '<p style="font-size: 24px;">Score: $' + score + ' <br> Wanted: ' + wantedLevel + ' Stars</p>' +
-        '<button class="play-btn" id="retry-btn">RETRY MISSION ' + (restartIdx + 1) + '</button>';
-      let retryHandler = () => {
-        document.getElementById('start-screen').style.display = 'none';
-        // Reset player state
-        playerHealth = maxHealth; armorHP = 0;
-        if (player.armorMesh) player.armorMesh.visible = false;
-        wantedLevel = 0; chaos = 0; copsKilled = 0; wantedTimer = 20;
-        if (currentVehicle) { currentVehicle = null; player.group.visible = true; }
-        player.pos.set(0, 3, 0); player.vel.set(0, 0, 0);
-        updateHUD();
-        isPaused = false;
-        isPlaying = true;
-        startMission(restartIdx);
-        if (!isMobileDevice) renderer.domElement.requestPointerLock();
-        if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
-      };
-      document.getElementById('retry-btn').onclick = retryHandler;
-      document.getElementById('retry-btn').addEventListener('touchstart', (e) => { e.preventDefault(); retryHandler(); });
+      // Show midgame ad on death, then show death screen
+      CG.showMidgame().then(() => {
+        document.getElementById('start-screen').style.display = 'flex';
+        let rewardBtnHtml = CG.ready ? '<button class="play-btn" id="reward-btn" style="background:#4CAF50; margin-top:8px; font-size:20px; padding:14px 40px;">WATCH AD FOR $5,000</button>' : '';
+        document.getElementById('start-screen').innerHTML =
+          '<h1 style="color:red; font-size:64px; text-shadow:4px 4px #000; letter-spacing: 5px;">WASTED</h1>' +
+          '<p style="font-size: 24px;">Score: $' + score + ' <br> Wanted: ' + wantedLevel + ' Stars</p>' +
+          '<button class="play-btn" id="retry-btn">RETRY MISSION ' + (restartIdx + 1) + '</button>' +
+          rewardBtnHtml;
+        let retryHandler = () => {
+          document.getElementById('start-screen').style.display = 'none';
+          // Reset player state
+          playerHealth = maxHealth; armorHP = 0;
+          if (player.armorMesh) player.armorMesh.visible = false;
+          wantedLevel = 0; chaos = 0; copsKilled = 0; wantedTimer = 20;
+          if (currentVehicle) { currentVehicle = null; player.group.visible = true; }
+          player.pos.set(0, 3, 0); player.vel.set(0, 0, 0);
+          updateHUD();
+          isPaused = false;
+          isPlaying = true;
+          startMission(restartIdx);
+          CG.gameplayStart();
+          if (!isMobileDevice) renderer.domElement.requestPointerLock();
+          if (isMobileDevice) document.getElementById('mobile-controls').style.display = 'block';
+        };
+        document.getElementById('retry-btn').onclick = retryHandler;
+        document.getElementById('retry-btn').addEventListener('touchstart', (e) => { e.preventDefault(); retryHandler(); });
+        // Rewarded ad button for bonus cash
+        let rewardBtn = document.getElementById('reward-btn');
+        if (rewardBtn) {
+          let rewardHandler = () => {
+            CG.showRewarded(() => {
+              score += 5000;
+              let p = document.querySelector('#start-screen p');
+              if (p) p.innerHTML = 'Score: $' + score + ' <br> Wanted: ' + wantedLevel + ' Stars';
+              rewardBtn.innerText = 'CLAIMED!';
+              rewardBtn.style.background = '#888';
+              rewardBtn.style.pointerEvents = 'none';
+            });
+          };
+          rewardBtn.onclick = rewardHandler;
+          rewardBtn.addEventListener('touchstart', (e) => { e.preventDefault(); rewardHandler(); });
+        }
+      });
     }
 
     let lookTouchId = null, lastLookX = 0, lastLookY = 0;
@@ -6590,11 +6706,18 @@
       });
 
       document.addEventListener('keydown', e => {
+        // Prevent browser shortcuts that conflict in iframe (Ctrl+W, Ctrl+S etc.)
+        if ((e.ctrlKey || e.metaKey) && ['w', 's', 'r', 'g', 'f'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+        }
         if (!isPlaying) return;
         let k = e.key.toLowerCase();
-        if (k === 'p') { togglePause(); return; }
+        if (k === 'p' || k === 'escape') {
+          if (k === 'escape' && fullMapOpen) { toggleFullMap(); return; }
+          togglePause();
+          return;
+        }
         if (k === 'm') { toggleFullMap(); return; }
-        if (k === 'escape' && fullMapOpen) { toggleFullMap(); return; }
         if (k === 'k') {
           dismissPhone();
           let planeOverlay = document.getElementById('plane-controls-overlay');
