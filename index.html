@@ -1020,7 +1020,7 @@
             <div id="car-health-fill" class="bar-fill"></div><span class="bar-label" id="veh-hp-label">CAR HP</span>
           </div>
           <div id="nos-bar" class="bar-container" style="margin-top:5px;">
-            <div id="nos-fill" class="bar-fill"></div><span class="bar-label">NOS</span>
+            <div id="nos-fill" class="bar-fill"></div><span class="bar-label">NOS</span><span id="nos-hint" style="display:none; margin-left:6px; color:rgba(255,255,255,0.5); font-size:10px; font-family:monospace;">[click]</span>
           </div>
         </div>
       </div>
@@ -4517,21 +4517,23 @@
 
               // === SAFE HOUSE (chunk -7, 0) - Large prominent compound ===
               if (isAlley && !isSidewalk) {
-                this.setBlock(lx, 0, lz, TYPES.CONCRETE); // concrete lot
+                this.setBlock(lx, 0, lz, TYPES.CONCRETE); // concrete lot - entire chunk is flat concrete
                 // === Large warehouse/garage (entire south half) ===
                 let gx1 = 13, gx2 = 40, gz1 = 13, gz2 = 28, garageH = 8;
                 let inGarage = (lx >= gx1 && lx <= gx2 && lz >= gz1 && lz <= gz2);
                 let isGarageWall = inGarage && (lx === gx1 || lx === gx2 || lz === gz1 || lz === gz2);
-                let isGarageDoor = (lz === gz1 && lx >= 18 && lx <= 34); // huge 16-wide door
-                let isDriveway = (lx >= 16 && lx <= 36 && lz >= 12 && lz < gz1);
+                let isGarageDoor = (lz === gz1 && lx >= 16 && lx <= 36); // huge 20-wide drive-through door
+                let isDriveway = (lx >= 14 && lx <= 38 && lz < gz1);
                 if (inGarage) {
                   this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                   for (let by = 1; by <= garageH; by++) {
-                    if (isGarageDoor && by <= 6) continue;
+                    if (isGarageDoor) continue; // Full height opening - no blocks at all
                     if (isGarageWall) this.setBlock(lx, by, lz, TYPES.CONCRETE_DARK);
                   }
-                  this.setBlock(lx, garageH + 1, lz, TYPES.CONCRETE_DARK);
-                  // Yellow stripe on garage walls at door height
+                  // Roof only over non-door areas
+                  if (!isGarageDoor) this.setBlock(lx, garageH + 1, lz, TYPES.CONCRETE_DARK);
+                  else this.setBlock(lx, garageH, lz, TYPES.CONCRETE_DARK); // lintel over door
+                  // Yellow stripe on side walls near door
                   if (isGarageWall && !isGarageDoor && (lz === gz1)) this.setBlock(lx, 7, lz, TYPES.YELLOW);
                 }
                 // === Main building (north half - 3 stories tall) ===
@@ -4568,19 +4570,19 @@
                     }
                   }
                 }
-                // Parking lot markings (yellow stripes)
-                if (!inHouse && !inGarage && !isPath && !isDriveway && lz > 12 && lz < gz1) {
-                  if (lx >= 14 && lx <= 42 && lx % 5 === 0) this.setBlock(lx, 0, lz, TYPES.YELLOW);
+                // Parking lot markings (yellow stripes on driveway)
+                if (!inHouse && !inGarage && !isPath && isDriveway && lz > 12) {
+                  if (lx % 5 === 0) this.setBlock(lx, 0, lz, TYPES.YELLOW);
                 }
-                // Palm trees (2)
-                if ((lx === 14 && lz === 14) || (lx === 42 && lz === 14)) {
-                  for (let ty = 1; ty <= 8; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
+                // Palm trees (2) - at entrance near road, away from garage
+                if ((lx === 14 && lz === 6) || (lx === 42 && lz === 6)) {
+                  for (let ty = 1; ty <= 7; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
                   for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
                     if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
-                      this.setBlock(lx+dx2, 9, lz+dz2, TYPES.LEAVES);
+                      this.setBlock(lx+dx2, 8, lz+dz2, TYPES.LEAVES);
                   }
                 }
-                // Concrete wall perimeter
+                // Concrete wall perimeter - only sides and back, NOT front (south)
                 if (!inHouse && !inGarage && !isDriveway && !isPath) {
                   if (((lx === 12 || lx === 44) && lz > 12 && lz < 45) || (lz === 45 && lx >= 12 && lx <= 44))
                     { this.setBlock(lx, 1, lz, TYPES.CONCRETE_DARK); this.setBlock(lx, 2, lz, TYPES.CONCRETE_DARK); }
@@ -4978,7 +4980,7 @@
                     }
                   }
                 }
-              } else if (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN') {
+              } else if (!nearAlley && (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN')) {
                 // Nature generation - larger terrain hills
                 let hillScale = zone === 'RURAL' ? 10 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 6 : 3));
                 // Safe house area: completely flat ground
@@ -6391,6 +6393,7 @@
         document.getElementById('veh-hp-label').innerText = isPlane ? 'PLANE' : (isBoat ? 'BOAT' : 'CAR HP');
         document.getElementById('nos-bar').style.display = (isPlane || isBoat) ? 'none' : 'block';
         if (!isPlane && !isBoat) document.getElementById('nos-fill').style.width = currentVehicle.nos + "%";
+        document.getElementById('nos-hint').style.display = (!isPlane && !isBoat && !isMobileDevice) ? 'inline' : 'none';
       } else document.getElementById('car-hud').style.display = 'none';
       for (let i = 1; i <= 5; i++) document.getElementById("s" + i).style.color = (i <= wantedLevel) ? 'gold' : 'rgba(255,255,255,0.3)';
       // Crosshair: show only in shoot mode (not build mode, not in non-weapon vehicles)
