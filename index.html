@@ -1509,8 +1509,8 @@
       { id: 'grenade', name: 'Grenades (x5)', price: 60000, icon: '💣', type: 'weapon', desc: 'Hold shoot to throw' },
       { id: 'suit', name: 'Business Suit', price: 18000, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
       { id: 'balaclava', name: 'Balaclava', price: 6000, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
-      { id: 'minecraft_skin', name: 'Classic Steve', price: 24000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
-      { id: 'gta_outfit', name: 'Street OG', price: 36000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
+      { id: 'minecraft_skin', name: 'Classic Steve Costume', price: 10000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
+      { id: 'gta_outfit', name: 'OG Costume', price: 36000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
       { id: 'tattoo', name: 'Sleeve Tattoos', price: 36000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
       { id: 'spray', name: 'Spray Can', price: 600000, icon: '🎨', type: 'tool', desc: 'Tag the city' },
       { id: 'buy_car', name: 'Sports Car', price: 1200000, icon: '🏎️', type: 'vehicle', desc: 'Fast red convertible!' },
@@ -1537,7 +1537,7 @@
 
     // --- Multi-Mission System ---
     const STORE_POS = new THREE.Vector3(-73, 1, 21);
-    const ALLEY_POS = new THREE.Vector3(-504, 1, 24);
+    const ALLEY_POS = new THREE.Vector3(-312, 1, 24);
     const CARPARK_POS = new THREE.Vector3(216, 1, -24);
     const MISSIONS = [
       { id: 0, name: 'ROB THE BANK', objective: 'MISSION 1: ROB THE BANK',
@@ -1549,7 +1549,7 @@
           { icon: '🤵', text: 'Suit Unlocked!', action: 'suit_unlock' }
         ]},
       { id: 1, name: 'GETAWAY', objective: 'MISSION 2: FIND A CAR & LOSE THE COPS',
-        target: [-504, 1, 24], reward: 5000,
+        target: [-312, 1, 24], reward: 5000,
         phoneStart: "Boss: The alarm's tripped and cops are everywhere! Jack a car and get to the safe house out west. Lose those cops!",
         rewards: [
           { icon: '💰', text: '+$5,000 Getaway Pay', action: 'cash5k' },
@@ -3950,7 +3950,8 @@
         const isBank = (this.cx === 1 && this.cz === 1);
         const isStore = (this.cx === -2 && this.cz === 0);
         const isCarpark = (this.cx === 4 && this.cz === -1);
-        const isAlley = (this.cx === -11 && this.cz === 0);
+        const isAlley = (this.cx === -7 && this.cz === 0);
+        const nearAlley = !isAlley && Math.abs(this.cx - (-7)) <= 1 && Math.abs(this.cz - 0) <= 1;
         const caveData = CAVE_LOCATIONS.find(c => c.cx === this.cx && c.cz === this.cz);
         let h = hash2D(this.cx, this.cz);
 
@@ -3972,7 +3973,8 @@
         else if (isBank) { buildingHeight = 25; wallType = TYPES.CONCRETE_DARK; glassType = TYPES.GLASS_BLUE; }
         else if (isStore) { buildingHeight = 18; wallType = TYPES.BRICK_RED; glassType = TYPES.GLASS_BLUE; }
         else if (isCarpark) { buildingHeight = 30; wallType = TYPES.CONCRETE; }
-        else if (isAlley) { buildingHeight = 0; } // Open alley/safe zone
+        else if (isAlley) { buildingHeight = 0; } // Open safe house zone
+        else if (nearAlley) { buildingHeight = 0; } // No buildings near safe house - flat open area
         else if (zone === 'DOWNTOWN') {
           // Chicago-style supertall skyscrapers in the heart of downtown
           let distFromCenter = Math.sqrt(this.cx * this.cx + this.cz * this.cz);
@@ -4371,7 +4373,7 @@
                 }
                 continue;
               }
-            } else if (zone === 'AIRPORT' || isCarpark) {
+            } else if (zone === 'AIRPORT' || isCarpark || isAlley || nearAlley) {
               isWater = false;
             } else {
               // River through city (sinusoidal path, north-south)
@@ -4499,12 +4501,12 @@
               let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.15) || (zone === 'SUBURBAN' && noise > 0.30) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
               // Mountain biome: always nature ground, no sidewalks/concrete
               if (biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN' || biome === 'FIELDS') isPark = true;
-              if (isAlley && isSidewalk) {
+              if ((isAlley || nearAlley) && isSidewalk) {
                 this.setBlock(lx, 0, lz, TYPES.CONCRETE); // concrete sidewalk for driveway
               } else if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
-                this.setBlock(lx, 0, lz, isPark ? groundType : TYPES.CONCRETE);
+                this.setBlock(lx, 0, lz, nearAlley ? TYPES.GRASS : (isPark ? groundType : TYPES.CONCRETE));
               }
 
               let margin = ROAD_WIDTH + 1;
@@ -4513,52 +4515,51 @@
               // Carpark uses expanded footprint — override canBuild
               if (isCarpark) canBuild = !isRoad;
 
-              // === SAFE HOUSE (chunk -11, 0) ===
+              // === SAFE HOUSE (chunk -7, 0) - Large prominent compound ===
               if (isAlley && !isSidewalk) {
-                this.setBlock(lx, 0, lz, TYPES.GRASS); // flat grass yard
-                // Big drive-in garage (16 wide, 12 deep)
-                let gx1 = 16, gx2 = 32, gz1 = 14, gz2 = 26, garageH = 6;
+                this.setBlock(lx, 0, lz, TYPES.CONCRETE); // concrete lot
+                // === Large warehouse/garage (entire south half) ===
+                let gx1 = 13, gx2 = 40, gz1 = 13, gz2 = 28, garageH = 8;
                 let inGarage = (lx >= gx1 && lx <= gx2 && lz >= gz1 && lz <= gz2);
                 let isGarageWall = inGarage && (lx === gx1 || lx === gx2 || lz === gz1 || lz === gz2);
-                let isGarageDoor = (lz === gz1 && lx >= 20 && lx <= 28);
-                // Driveway from road to garage
-                let isDriveway = (lx >= 19 && lx <= 29 && lz >= 12 && lz < gz1);
-                if (isDriveway) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                // Garage structure
+                let isGarageDoor = (lz === gz1 && lx >= 18 && lx <= 34); // huge 16-wide door
+                let isDriveway = (lx >= 16 && lx <= 36 && lz >= 12 && lz < gz1);
                 if (inGarage) {
                   this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                   for (let by = 1; by <= garageH; by++) {
-                    if (isGarageDoor && by <= 5) continue;
+                    if (isGarageDoor && by <= 6) continue;
                     if (isGarageWall) this.setBlock(lx, by, lz, TYPES.CONCRETE_DARK);
                   }
-                  this.setBlock(lx, garageH + 1, lz, TYPES.CONCRETE_DARK); // flat roof
+                  this.setBlock(lx, garageH + 1, lz, TYPES.CONCRETE_DARK);
+                  // Yellow stripe on garage walls at door height
+                  if (isGarageWall && !isGarageDoor && (lz === gz1)) this.setBlock(lx, 7, lz, TYPES.YELLOW);
                 }
-                // Main house behind garage
-                let hx1 = 16, hx2 = 34, hz1 = 28, hz2 = 40, wallH = 8;
-                let hMidX = 25, hMidZ = 34;
+                // === Main building (north half - 3 stories tall) ===
+                let hx1 = 13, hx2 = 42, hz1 = 30, hz2 = 44, wallH = 12;
+                let hMidX = 27, hMidZ = 37;
                 let inHouse = (lx >= hx1 && lx <= hx2 && lz >= hz1 && lz <= hz2);
                 let isHouseWall = inHouse && (lx === hx1 || lx === hx2 || lz === hz1 || lz === hz2);
-                let isDoor = (lz === hz1 && lx >= hMidX - 1 && lx <= hMidX + 1);
-                let isPath = (lx >= 20 && lx <= 28 && lz > gz2 && lz < hz1);
+                let isDoor = (lz === hz1 && lx >= hMidX - 2 && lx <= hMidX + 2);
+                let isPath = (lx >= 18 && lx <= 34 && lz > gz2 && lz < hz1);
                 if (isPath) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                 if (inHouse) {
                   for (let by = 1; by <= wallH; by++) {
                     if (isDoor && by <= 4) continue;
                     if (isHouseWall) {
-                      let isWindow = (by >= 3 && by <= 4 || by >= 6 && by <= 7) &&
-                        (lz !== hz1 && lz !== hz2 ? (lx === hx1 || lx === hx2) && (lz % 4 === 1 || lz % 4 === 2) :
-                        (lx % 4 === 1 || lx % 4 === 2)) && !isDoor;
+                      let isWindow = (by >= 3 && by <= 4 || by >= 7 && by <= 8 || by >= 10 && by <= 11) &&
+                        (lz !== hz1 && lz !== hz2 ? (lx === hx1 || lx === hx2) && (lz % 3 !== 0) :
+                        (lx % 3 !== 0)) && !isDoor;
                       if (isWindow) this.setBlock(lx, by, lz, TYPES.GLASS_BLUE);
                       else {
                         let isCorner = (lx === hx1 || lx === hx2) && (lz === hz1 || lz === hz2);
                         this.setBlock(lx, by, lz, isCorner ? TYPES.BRICK_RED : TYPES.PLASTER_WARM);
                       }
                     } else {
-                      if (by === 1) this.setBlock(lx, by, lz, TYPES.WOOD);
-                      if (by === 5) this.setBlock(lx, by, lz, TYPES.WOOD);
+                      if (by === 1 || by === 5 || by === 9) this.setBlock(lx, by, lz, TYPES.WOOD);
                     }
                   }
                   if (isDoor) this.setBlock(lx, 5, lz, TYPES.WOOD);
+                  // Red peaked roof
                   let dzC = Math.abs(lz - hMidZ);
                   let roofH = wallH + Math.floor((hz2 - hz1) / 2) + 1 - dzC;
                   if (roofH > wallH) {
@@ -4567,22 +4568,22 @@
                     }
                   }
                 }
-                // Palm tree
-                if (lx === 38 && lz === 20) {
-                  for (let ty = 1; ty <= 7; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
+                // Parking lot markings (yellow stripes)
+                if (!inHouse && !inGarage && !isPath && !isDriveway && lz > 12 && lz < gz1) {
+                  if (lx >= 14 && lx <= 42 && lx % 5 === 0) this.setBlock(lx, 0, lz, TYPES.YELLOW);
+                }
+                // Palm trees (2)
+                if ((lx === 14 && lz === 14) || (lx === 42 && lz === 14)) {
+                  for (let ty = 1; ty <= 8; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
                   for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
                     if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
-                      this.setBlock(lx+dx2, 8, lz+dz2, TYPES.LEAVES);
-                  }
-                  for (let dx2 = -3; dx2 <= 3; dx2++) for (let dz2 = -3; dz2 <= 3; dz2++) {
-                    if (Math.abs(dx2) + Math.abs(dz2) === 3 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
-                      this.setBlock(lx+dx2, 7, lz+dz2, TYPES.LEAVES);
+                      this.setBlock(lx+dx2, 9, lz+dz2, TYPES.LEAVES);
                   }
                 }
-                // Wood fence around yard
+                // Concrete wall perimeter
                 if (!inHouse && !inGarage && !isDriveway && !isPath) {
-                  if (((lx === 14 || lx === 42) && lz > 12 && lz < 44) || (lz === 43 && lx > 14 && lx < 42))
-                    this.setBlock(lx, 1, lz, TYPES.WOOD);
+                  if (((lx === 12 || lx === 44) && lz > 12 && lz < 45) || (lz === 45 && lx >= 12 && lx <= 44))
+                    { this.setBlock(lx, 1, lz, TYPES.CONCRETE_DARK); this.setBlock(lx, 2, lz, TYPES.CONCRETE_DARK); }
                 }
               } else if (canBuild && buildingHeight > 0 && !isPark && biome !== 'MOUNTAIN' && biome !== 'GRASSY_MOUNTAIN' && biome !== 'FIELDS') {
                 // Building footprint - smaller for suburban
@@ -4855,7 +4856,7 @@
                     let subHill = Math.floor(smoothNoise(wx * 0.04, wz * 0.04) * 4);
                     let subHill2 = Math.floor(smoothNoise(wx * 0.08 + 30, wz * 0.08 + 30) * 2);
                     subHill = Math.max(0, subHill + subHill2);
-                    if (isAlley) subHill = 0; // Flat ground at safe house
+                    if (isAlley || nearAlley) subHill = 0; // Flat ground at safe house area
                     for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? groundType : subSoilType);
                     if (subHill === 0) this.setBlock(lx, 0, lz, groundType);
 
@@ -4864,12 +4865,12 @@
                     let subType = hash2D(this.cx * 13, this.cz * 17);
                     // Front yard fence along sidewalk edge
                     let nearSidewalk = (rxMod === ROAD_WIDTH + 2 || rxMod === CHUNK_SIZE - 3 || rzMod === ROAD_WIDTH + 2 || rzMod === CHUNK_SIZE - 3);
-                    if (!isAlley && nearSidewalk && hash2D(wx * 7, wz * 7) > 0.4) {
+                    if (!isAlley && !nearAlley && nearSidewalk && hash2D(wx * 7, wz * 7) > 0.4) {
                       this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
                     }
 
-                    // Farm chunks: crops, hay bales, silos (skip safe house)
-                    if (!isAlley && subType > 0.55 && subType <= 0.90) {
+                    // Farm chunks: crops, hay bales, silos (skip safe house area)
+                    if (!isAlley && !nearAlley && subType > 0.55 && subType <= 0.90) {
                       // Crop rows
                       if (lx > margin + 2 && lx < CHUNK_SIZE - margin - 2 && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2) {
                         if (lx % 2 === 0 && hash2D(wx + 20, wz + 20) > 0.3) {
@@ -4892,25 +4893,7 @@
                         // Silo dome
                         this.setBlock(lx, subHill + 9, lz, TYPES.STEEL);
                       }
-                      // Farm animals - cows (white + black blocks), sheep (white), pigs (pink) - lots of them!
-                      let animalHash = hash2D(wx * 3 + 77, wz * 3 + 77);
-                      if (animalHash > 0.97 && lx > margin + 6 && lx < CHUNK_SIZE - margin - 6 && lz > margin + 6 && lz < CHUNK_SIZE - margin - 6) {
-                        let animalType = Math.floor(animalHash * 1000) % 3;
-                        let sh = subHill + 1;
-                        if (animalType === 0) {
-                          // Cow: 3 blocks long, 2 tall, black & white
-                          this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, sh, lz, TYPES.WHITE);
-                          this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+2, sh+1, lz, TYPES.CONCRETE_DARK); // head
-                        } else if (animalType === 1) {
-                          // Sheep: 2 blocks long, 2 tall, white fluffy
-                          this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.WHITE);
-                          this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+1, sh+1, lz, TYPES.CONCRETE_DARK); // face
-                        } else {
-                          // Pig: 2 blocks long, 1.5 tall, pink
-                          this.setBlock(lx, sh, lz, TYPES.PLASTER_WARM); this.setBlock(lx+1, sh, lz, TYPES.PLASTER_WARM);
-                          this.setBlock(lx+1, sh+1, lz, TYPES.PLASTER_WARM); // head
-                        }
-                      }
+                      // Farm animals are spawned as moving entities (see FarmAnimal class)
                       // Tractors are now drivable vehicles (spawned in spawnTraffic)
                       // Fence around farm perimeter
                       if ((lx === margin + 2 || lx === CHUNK_SIZE - margin - 2) && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2 && lz % 2 === 0) {
@@ -4998,8 +4981,8 @@
               } else if (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN') {
                 // Nature generation - larger terrain hills
                 let hillScale = zone === 'RURAL' ? 10 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 6 : 3));
-                // Safe house farm: completely flat ground
-                if (isAlley) hillScale = 0;
+                // Safe house area: completely flat ground
+                if (isAlley || nearAlley) hillScale = 0;
 
                 // Mountain biome: massive terrain
                 if (biome === 'MOUNTAIN') {
@@ -6291,17 +6274,19 @@
     let safeHouseCarsSpawned = false;
     function spawnSafeHouseCars() {
       if (safeHouseCarsSpawned) return;
-      let ck = '-11,0';
+      let ck = '-7,0';
       if (!activeChunks.has(ck)) return;
       safeHouseCarsSpawned = true;
-      let colors = [0x882222, 0x224488, 0x888888, 0x448844, 0x666666];
-      // Chunk origin: -528, 0. Garage at lx 16-32, lz 14-26. Road at lz < 12.
+      let colors = [0x882222, 0x224488, 0x888888, 0x448844, 0x666666, 0xcc8800, 0x222222];
+      // Chunk origin: -336, 0. Big garage at lx 13-40, lz 13-28. Road at lz < 12.
       let positions = [
-        { x: -528 + 34, z: 8, yaw: Math.PI * 0.5 },  // on road east of garage
-        { x: -528 + 36, z: 8, yaw: Math.PI * 0.5 },  // next to it
-        { x: -528 + 10, z: 20, yaw: 0 },              // on road west of property
-        { x: -528 + 10, z: 28, yaw: 0 },              // further along road
-        { x: -528 + 22, z: 18, yaw: Math.PI },         // inside garage
+        { x: -336 + 20, z: 8, yaw: Math.PI * 0.5 },   // on road in front
+        { x: -336 + 28, z: 8, yaw: Math.PI * 0.5 },   // next to it on road
+        { x: -336 + 36, z: 8, yaw: Math.PI * 0.5 },   // further east on road
+        { x: -336 + 8, z: 18, yaw: 0 },                // on west road
+        { x: -336 + 8, z: 26, yaw: 0 },                // further along west road
+        { x: -336 + 24, z: 20, yaw: Math.PI },          // inside garage
+        { x: -336 + 32, z: 20, yaw: Math.PI },          // inside garage right
       ];
       for (let i = 0; i < positions.length; i++) {
         let c = new Vehicle('CIVILIAN', positions[i].x, positions[i].z, colors[i]);
@@ -6956,9 +6941,9 @@
             let hospD = Math.sqrt((wx - (ISLAND_X + 60)) * (wx - (ISLAND_X + 60)) + (wz - (ISLAND_Z + 100)) * (wz - (ISLAND_Z + 100)));
             let hillD = Math.sqrt((wx - (ISLAND_X - 80)) * (wx - (ISLAND_X - 80)) + (wz - (ISLAND_Z + 80)) * (wz - (ISLAND_Z + 80)));
             let onBridge = Math.abs(wz - ISLAND_Z) < 5 && wx > ISLAND_X + 55 && wx < ISLAND_X + 250;
-            if (idDist < 65 + coastN) {
-              let mtD = Math.sqrt((wx - (ISLAND_X - 15)) * (wx - (ISLAND_X - 15)) + (wz - (ISLAND_Z - 5)) * (wz - (ISLAND_Z - 5)));
-              color = mtD < 35 ? '#6a7a5a' : (idDist > 60 + coastN ? '#c8bb80' : '#3a8a3a');
+            if (idDist < 85 + coastN) {
+              let mtD = Math.sqrt((wx - (ISLAND_X - 55)) * (wx - (ISLAND_X - 55)) + (wz - ISLAND_Z) * (wz - ISLAND_Z));
+              color = mtD < 22 ? '#6a7a5a' : (idDist > 80 + coastN ? '#c8bb80' : '#3a8a3a');
             } else if (farmD < 30) color = '#4a7a34';
             else if (schoolD < 25) color = '#5a7a44';
             else if (hospD < 25) color = '#5a7a44';
@@ -7038,7 +7023,7 @@
       // === MISSION MARKERS ===
       let missionLocations = [
         { name: 'BANK', x: 72, z: 72, mission: 0 },
-        { name: 'SAFE HOUSE', x: -504, z: 24, mission: 1 },
+        { name: 'SAFE HOUSE', x: -312, z: 24, mission: 1 },
         { name: 'STORE', x: -73, z: 21, mission: 2 },
         { name: 'CAR PARK', x: 216, z: -24, mission: 4 },
         { name: 'AIRPORT', x: AIRPORT_X, z: AIRPORT_Z, mission: 5 },
@@ -7099,7 +7084,7 @@
       // Player arrow
       ctx.save();
       ctx.translate(pmx, pmz);
-      ctx.rotate(-pyaw + Math.PI / 2);
+      ctx.rotate(-pyaw);
       ctx.fillStyle = '#00ff44';
       ctx.beginPath();
       ctx.moveTo(0, -11); ctx.lineTo(7, 7); ctx.lineTo(0, 3); ctx.lineTo(-7, 7);
