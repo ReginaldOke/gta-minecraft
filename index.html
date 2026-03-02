@@ -4980,11 +4980,9 @@
                     }
                   }
                 }
-              } else if (!nearAlley && (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN')) {
+              } else if (!nearAlley && !isAlley && (isPark || zone === 'RURAL' || zone === 'ISLAND' || biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN')) {
                 // Nature generation - larger terrain hills
                 let hillScale = zone === 'RURAL' ? 10 : (zone === 'ISLAND' ? 5 : (zone === 'SUBURBAN' ? 6 : 3));
-                // Safe house area: completely flat ground
-                if (isAlley || nearAlley) hillScale = 0;
 
                 // Mountain biome: massive terrain
                 if (biome === 'MOUNTAIN') {
@@ -5006,6 +5004,8 @@
                 if (biome === 'FIELDS') {
                   hillScale = 2; // Almost completely flat
                 }
+                // Safe house area: completely flat ground (MUST be after biome overrides)
+                if (isAlley || nearAlley) hillScale = 0;
 
                 let hill = Math.floor(smoothNoise(wx * 0.06, wz * 0.06) * hillScale);
                 // Extra hills using secondary noise for more terrain variation
