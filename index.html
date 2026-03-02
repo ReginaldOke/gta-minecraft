@@ -1089,11 +1089,11 @@
     <h1 style="font-size: 54px; color: gold; text-shadow: 5px 5px 0 #000, -2px -2px 0 #b8860b; margin: 0; letter-spacing: 2px;">JEE TEE AYY SIX</h1>
     <div id="start-controls-desktop" style="margin-top: 24px; display: flex; flex-direction: column; gap: 20px; align-items: center;">
       <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">W</span><span class="kbd" style="font-size:18px; padding:6px 12px;">A</span><span class="kbd" style="font-size:18px; padding:6px 12px;">S</span><span class="kbd" style="font-size:18px; padding:6px 12px;">D</span><span style="color:#ccc; font-size:18px; margin-left:6px;">Move / Drive</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Mouse</span><span style="color:#888; font-size:18px;">Look & Aim</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Click</span><span style="color:#888; font-size:18px;">Shoot / NOS Boost</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Space</span><span style="color:#888; font-size:18px;">Jump / Fly</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Enter</span><span style="color:#888; font-size:18px;">Drive / Interact</span></div>
-      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Shift</span><span style="color:#888; font-size:18px;">Swap Weapon / Build</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Mouse</span><span style="color:#ccc; font-size:18px;">Look & Aim</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Click</span><span style="color:#ccc; font-size:18px;">Shoot / NOS Boost</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Space</span><span style="color:#ccc; font-size:18px;">Jump / Fly</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 16px;">Enter</span><span style="color:#ccc; font-size:18px;">Drive / Interact</span></div>
+      <div style="display:flex; align-items:center; gap:10px;"><span class="kbd" style="font-size:18px; padding:6px 12px;">Shift</span><span style="color:#ccc; font-size:18px;">Swap Weapon / Build</span></div>
     </div>
     <div id="start-controls-mobile" style="margin-top: 24px; display: none; text-align: center; font-size: 20px; line-height: 2.2; color: #ccc;">
       <div>🕹️ Left stick to move</div>
@@ -1901,6 +1901,8 @@
     function triggerMissionSuccess() {
       if (mission.state === 'SUCCESS') return; // Guard against double-calls
       let m = MISSIONS[missionIndex];
+      // Capture actual position for success camera (use vehicle pos if in vehicle)
+      mission.successPos = (currentVehicle ? currentVehicle.pos : player.pos).clone();
       mission.state = 'SUCCESS'; mission.active = false;
       isPaused = true; // Pause game during success screen
       playerHealth = maxHealth; // Heal player so they can't die during success cinematic
@@ -2050,18 +2052,18 @@
     }
 
     function spawnIslandVehicles() {
-      // Spawn 5 tanks and 5 planes on the island grassy area
+      // Spawn 5 tanks and 5 planes on the expanded airfield next to mansion
       let tankColors = [0x3b4d2e, 0x556b2f, 0x4a5a3a, 0x2d3b1f, 0x5a6b4a];
       let planeColors = [0xffffff, 0xcc0000, 0x0044cc, 0xffcc00, 0x00cc44];
       for (let i = 0; i < 5; i++) {
         // Tanks on grass north side of airfield
-        let tx = ISLAND_X + 20 - 16 + i * 8;
-        let tz = ISLAND_Z + 30 + 12;
+        let tx = ISLAND_X + 25 - 16 + i * 8;
+        let tz = ISLAND_Z + 30 + 18;
         let tank = new Vehicle('TANK', tx, tz, tankColors[i]);
         tank.parked = true; tank.vel.set(0, 0, 0);
         vehicles.push(tank);
-        // Planes along airfield runway (next to mansion)
-        let px = ISLAND_X + 20 - 20 + i * 10;
+        // Planes along airfield runway
+        let px = ISLAND_X + 25 - 24 + i * 12;
         let pz = ISLAND_Z + 30;
         let plane = new Vehicle('PLANE', px, pz, planeColors[i]);
         plane.parked = true; plane.vel.set(0, 0, 0); plane.yaw = Math.PI * 0.5;
@@ -2254,19 +2256,15 @@
         // Desktop: overlay in center of screen
         let overlay = document.createElement('div');
         overlay.id = 'plane-controls-overlay';
-        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.6); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
-        overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
-          '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
-          '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
-          '<span style="color:#ffcc00; font-weight:bold;">S</span> — Slow down + descend<br>' +
-          '<span style="color:#ffcc00; font-weight:bold;">A / D</span> — Steer left / right<br>' +
-          '<span style="color:#ffcc00; font-weight:bold;">SPACE</span> — Fly up<br>' +
-          '<span style="color:#aaa;">Release Space to glide down</span><br>' +
-          '<span style="color:#ffcc00; font-weight:bold;">Enter</span> — Exit plane' +
-          '</div>' +
-          '<div style="margin-top:12px; color:#888; font-size:14px;">[K] to dismiss</div>';
+        overlay.style.cssText = 'position:fixed; bottom:20px; left:20px; z-index:500; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:2px solid #ffcc00; border-radius:12px; padding:16px 24px; color:white; font-size:16px; text-align:left; pointer-events:none;';
+        overlay.innerHTML = '<div style="color:#ffcc00; font-size:20px; font-weight:bold; margin-bottom:8px;">FLIGHT CONTROLS</div>' +
+          '<div style="line-height:2;">' +
+          '<span style="color:#ffcc00; font-weight:bold;">W</span> Accelerate &nbsp; <span style="color:#ffcc00; font-weight:bold;">S</span> Slow down<br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">A / D</span> Steer &nbsp; <span style="color:#ffcc00; font-weight:bold;">SPACE</span> Fly up<br>' +
+          '<span style="color:#ffcc00; font-weight:bold;">Enter</span> Exit plane' +
+          '</div>';
         document.body.appendChild(overlay);
-        setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 20000);
+        setTimeout(() => { if (overlay.parentElement) { overlay.style.transition = 'opacity 1s'; overlay.style.opacity = '0'; setTimeout(() => overlay.remove(), 1000); } }, 10000);
       }
     }
 
@@ -2349,7 +2347,7 @@
 
     window.toggleBuildMode = function() {
       if (currentVehicle) return; // No build mode in vehicles
-      if (totalBlocks <= 0) return;
+      if (totalBlocks <= 0) { showFloatingText('No blocks! Destroy buildings to collect.', player.pos); return; }
       if (buildMode) {
         buildMode = false;
         if (playerWeapons.length > 0) {
@@ -3586,18 +3584,18 @@
       cpctx.fillText('CARPARK', 256, 64);
       let carparkSignTex = new THREE.CanvasTexture(carparkSignCanvas);
       let cpSignMat = new THREE.MeshBasicMaterial({ map: carparkSignTex, side: THREE.DoubleSide });
-      // South face
+      // South face (facing outward -Z)
       let cpSignS = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
-      cpSignS.position.set(CARPARK_POS.x, 22, CARPARK_POS.z - 13); scene.add(cpSignS);
-      // North face
+      cpSignS.position.set(CARPARK_POS.x, 22, CARPARK_POS.z - 13); cpSignS.rotation.y = Math.PI; scene.add(cpSignS);
+      // North face (facing outward +Z)
       let cpSignN = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
-      cpSignN.position.set(CARPARK_POS.x, 22, CARPARK_POS.z + 13); cpSignN.rotation.y = Math.PI; scene.add(cpSignN);
-      // West face
+      cpSignN.position.set(CARPARK_POS.x, 22, CARPARK_POS.z + 13); scene.add(cpSignN);
+      // West face (facing outward -X)
       let cpSignW = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
-      cpSignW.position.set(CARPARK_POS.x - 13, 22, CARPARK_POS.z); cpSignW.rotation.y = Math.PI / 2; scene.add(cpSignW);
-      // East face
+      cpSignW.position.set(CARPARK_POS.x - 13, 22, CARPARK_POS.z); cpSignW.rotation.y = -Math.PI / 2; scene.add(cpSignW);
+      // East face (facing outward +X)
       let cpSignE = new THREE.Mesh(new THREE.PlaneGeometry(16, 4), cpSignMat.clone());
-      cpSignE.position.set(CARPARK_POS.x + 13, 22, CARPARK_POS.z); cpSignE.rotation.y = -Math.PI / 2; scene.add(cpSignE);
+      cpSignE.position.set(CARPARK_POS.x + 13, 22, CARPARK_POS.z); cpSignE.rotation.y = Math.PI / 2; scene.add(cpSignE);
 
       // Airport signs on all 4 sides of terminal
       let apSignCanvas = document.createElement('canvas');
@@ -4086,9 +4084,9 @@
               let idDist = Math.sqrt((wx - ISLAND_X) * (wx - ISLAND_X) + (wz - ISLAND_Z) * (wz - ISLAND_Z));
               // Bridge from island to mainland (goes east)
               let onBridge = Math.abs(wz - ISLAND_Z) < 4 && wx > ISLAND_X + 60 && wx < ISLAND_X + 250;
-              // Island land with organic coastline using noise
+              // Island land with organic coastline using noise - expanded radius
               let coastNoise = smoothNoise(wx * 0.04, wz * 0.04) * 12 + smoothNoise(wx * 0.08, wz * 0.08) * 6;
-              let islandRadius = 65 + coastNoise;
+              let islandRadius = 85 + coastNoise;
               if (onBridge) {
                 isWater = false;
               } else {
@@ -4097,11 +4095,11 @@
               // No grid roads on island
               isRoad = false; isSidewalk = false;
 
-              // === Island Mountain (large, organic, center-west) ===
-              let mtX = ISLAND_X - 15, mtZ = ISLAND_Z - 5;
+              // === Island Mountain (smaller, pushed to far west edge) ===
+              let mtX = ISLAND_X - 55, mtZ = ISLAND_Z;
               let mtIslandDist = Math.sqrt((wx - mtX) * (wx - mtX) + (wz - mtZ) * (wz - mtZ));
-              let mtNoise = smoothNoise(wx * 0.05, wz * 0.05) * 8 + smoothNoise(wx * 0.1, wz * 0.1) * 4;
-              let mtRadius = 35 + mtNoise;
+              let mtNoise = smoothNoise(wx * 0.05, wz * 0.05) * 5 + smoothNoise(wx * 0.1, wz * 0.1) * 3;
+              let mtRadius = 22 + mtNoise;
               let isIslandMt = mtIslandDist < mtRadius && !isWater;
 
               // === Mansion (center-north) ===
@@ -4112,12 +4110,30 @@
               let isCastleDoor = isCastle && czOff === 0 && cxOff >= 11 && cxOff <= 15;
               let isCornerTower = isCastle && ((cxOff <= 3 || cxOff >= 23) && (czOff <= 3 || czOff >= 17));
 
-              // === Runway (south side, wide and prominent) ===
-              let islandRunway = Math.abs(wz - (ISLAND_Z - 25)) < 4 && wx > ISLAND_X - 45 && wx < ISLAND_X + 45 && !isWater;
-              // === Flat airfield next to mansion (east side) ===
-              let airfieldCX = ISLAND_X + 20, airfieldCZ = ISLAND_Z + 30;
-              let isAirfield = wx >= airfieldCX - 25 && wx <= airfieldCX + 25 && wz >= airfieldCZ - 20 && wz <= airfieldCZ + 20 && !isWater;
-              let isMansionRunway = Math.abs(wz - airfieldCZ) < 3 && wx >= airfieldCX - 25 && wx <= airfieldCX + 25 && !isWater;
+              // === Flat airfield east of mansion (big, no trees) ===
+              let airfieldCX = ISLAND_X + 25, airfieldCZ = ISLAND_Z + 30;
+              let isAirfield = wx >= airfieldCX - 30 && wx <= airfieldCX + 30 && wz >= airfieldCZ - 25 && wz <= airfieldCZ + 25 && !isWater;
+              let isMansionRunway = Math.abs(wz - airfieldCZ) < 3 && wx >= airfieldCX - 30 && wx <= airfieldCX + 30 && !isWater;
+
+              // === Winding roads ===
+              // Road 1: Bridge landing to mansion (sinusoidal curve)
+              let bridgeEndX = ISLAND_X + 55;
+              let mansionDoorX = castleX + 13;
+              let isMainRoad = false;
+              if (wx >= mansionDoorX - 5 && wx <= bridgeEndX + 5 && !isWater) {
+                let t = (wx - mansionDoorX) / (bridgeEndX - mansionDoorX); // 0 at mansion, 1 at bridge
+                t = Math.max(0, Math.min(1, t));
+                let roadZ = ISLAND_Z + (1 - t) * 25 + Math.sin(t * Math.PI * 2.5) * 18;
+                if (Math.abs(wz - roadZ) < 3) isMainRoad = true;
+              }
+              // Road 2: Coastal ring road around the island
+              let isCoastalRoad = false;
+              if (!isWater) {
+                let angle = Math.atan2(wz - ISLAND_Z, wx - ISLAND_X);
+                let ringRadius = 55 + Math.sin(angle * 3) * 10 + Math.sin(angle * 5) * 5;
+                let distToRing = Math.abs(idDist - ringRadius);
+                if (distToRing < 2.5 && !isIslandMt) isCoastalRoad = true;
+              }
 
               // === Fountain/courtyard ===
               let fxOff = wx - ISLAND_X, fzOff = wz - (ISLAND_Z + 20);
@@ -4165,11 +4181,11 @@
                   for (let by = -2; by <= 0; by++) this.setBlock(lx, by, lz, TYPES.CONCRETE);
                 }
                 continue;
-              } else if (islandRunway) {
+              } else if (isMainRoad || isCoastalRoad) {
                 this.setBlock(lx, 0, lz, TYPES.ROAD);
-                if (Math.abs(wz - (ISLAND_Z - 25)) < 1 && Math.abs(wx - ISLAND_X) % 8 < 4) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                if (Math.abs(wz - (ISLAND_Z - 25)) >= 3) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                if ((wx < ISLAND_X - 38 || wx > ISLAND_X + 38) && Math.abs(wz - (ISLAND_Z - 25)) < 3) this.setBlock(lx, 0, lz, TYPES.YELLOW);
+                // Center line markings
+                if ((isMainRoad && Math.abs(wx) % 6 < 3) || (isCoastalRoad && Math.abs(wx + wz) % 8 < 3))
+                  this.setBlock(lx, 0, lz, TYPES.CONCRETE);
                 continue;
               } else if (isAirfield && !isCastle) {
                 // Flat airfield: runway strip + surrounding grass
@@ -4186,27 +4202,17 @@
                 }
                 continue;
               } else if (isIslandMt && !isCastle && !isAirfield) {
-                // Large organic mountain with variable height
+                // Smaller mountain on west edge
                 let mtFactor = 1 - mtIslandDist / mtRadius;
-                let mtH = Math.floor(mtFactor * 50 + smoothNoise(wx * 0.06, wz * 0.06) * 10);
+                let mtH = Math.floor(mtFactor * 30 + smoothNoise(wx * 0.06, wz * 0.06) * 6);
                 if (mtH < 1) mtH = 1;
                 this.setBlock(lx, 0, lz, TYPES.GRASS);
                 for (let my = 1; my <= mtH; my++) {
-                  if (my === mtH && mtH > 35) this.setBlock(lx, my, lz, TYPES.SNOW);
-                  else if (my === mtH && mtH > 25) this.setBlock(lx, my, lz, TYPES.STONE);
+                  if (my === mtH && mtH > 22) this.setBlock(lx, my, lz, TYPES.SNOW);
+                  else if (my === mtH && mtH > 15) this.setBlock(lx, my, lz, TYPES.STONE);
                   else if (my === mtH) this.setBlock(lx, my, lz, TYPES.GRASS);
-                  else if (my > mtH - 4) this.setBlock(lx, my, lz, TYPES.STONE);
+                  else if (my > mtH - 3) this.setBlock(lx, my, lz, TYPES.STONE);
                   else this.setBlock(lx, my, lz, TYPES.DIRT);
-                }
-                // Palm trees on lower slopes (fewer on mansion/north half)
-                let palmThreshold = (wz > ISLAND_Z) ? 0.985 : (isMobileDevice ? 0.95 : 0.92);
-                if (mtH < 8 && mtH > 2 && hash2D(wx * 7, wz * 7) > palmThreshold) {
-                  let treeH = 5 + Math.floor(hash2D(wx * 3, wz * 3) * 3);
-                  for (let ty = mtH + 1; ty <= mtH + treeH; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
-                  for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
-                    if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx + dx2 >= 0 && lx + dx2 < CHUNK_SIZE && lz + dz2 >= 0 && lz + dz2 < CHUNK_SIZE)
-                      this.setBlock(lx + dx2, mtH + treeH + 1, lz + dz2, TYPES.LEAVES);
-                  }
                 }
                 continue;
               } else if (isCastle) {
@@ -4341,19 +4347,26 @@
                 }
                 continue;
               } else if (idDist < islandRadius && !isWater) {
-                // Regular island grass with palm trees
+                // Regular flat island terrain - gentle grass, very drivable
                 this.setBlock(lx, 0, lz, TYPES.GRASS);
+                // Gentle rolling (max 2 blocks high, very smooth)
+                let gentleHill = Math.floor(smoothNoise(wx * 0.02, wz * 0.02) * 2);
+                if (gentleHill > 0) {
+                  for (let gh = 1; gh <= gentleHill; gh++) this.setBlock(lx, gh, lz, gh === gentleHill ? TYPES.GRASS : TYPES.DIRT);
+                }
                 // Beach ring
                 if (idDist > islandRadius - 5) {
                   this.setBlock(lx, 0, lz, TYPES.SAND);
                 }
-                // Palm trees scattered
-                if (idDist < islandRadius - 6 && hash2D(wx * 11, wz * 11) > 0.96 && !isCastle && mtIslandDist > mtRadius) {
-                  let pH = 6 + Math.floor(hash2D(wx * 4, wz * 4) * 4);
-                  for (let ty = 1; ty <= pH; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
+                // Sparse palm trees (not near airfield or roads)
+                let nearAirfield = wx >= airfieldCX - 32 && wx <= airfieldCX + 32 && wz >= airfieldCZ - 27 && wz <= airfieldCZ + 27;
+                if (!nearAirfield && !isMainRoad && !isCoastalRoad && idDist < islandRadius - 8 && hash2D(wx * 11, wz * 11) > 0.98 && mtIslandDist > mtRadius) {
+                  let pH = 6 + Math.floor(hash2D(wx * 4, wz * 4) * 3);
+                  let tBase = gentleHill;
+                  for (let ty = tBase + 1; ty <= tBase + pH; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
                   for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
                     if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx + dx2 >= 0 && lx + dx2 < CHUNK_SIZE && lz + dz2 >= 0 && lz + dz2 < CHUNK_SIZE)
-                      this.setBlock(lx + dx2, pH + 1, lz + dz2, TYPES.LEAVES);
+                      this.setBlock(lx + dx2, tBase + pH + 1, lz + dz2, TYPES.LEAVES);
                   }
                 }
                 continue;
@@ -4486,11 +4499,12 @@
               let isPark = !isCarpark && ((zone === 'RURAL' && noise > 0.15) || (zone === 'SUBURBAN' && noise > 0.30) || (zone === 'URBAN' && noise > 0.55) || (zone === 'DOWNTOWN' && noise > 0.68) || (zone === 'ISLAND' && noise > 0.45));
               // Mountain biome: always nature ground, no sidewalks/concrete
               if (biome === 'MOUNTAIN' || biome === 'GRASSY_MOUNTAIN' || biome === 'FIELDS') isPark = true;
-              if (isSidewalk && !isPark) {
+              if (isAlley && isSidewalk) {
+                this.setBlock(lx, 0, lz, TYPES.CONCRETE); // concrete sidewalk for driveway
+              } else if (isSidewalk && !isPark) {
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? groundType : TYPES.CONCRETE);
-                // Safe house is handled in suburban zone code path
               }
 
               let margin = ROAD_WIDTH + 1;
@@ -4499,7 +4513,78 @@
               // Carpark uses expanded footprint — override canBuild
               if (isCarpark) canBuild = !isRoad;
 
-              if (canBuild && buildingHeight > 0 && !isPark && biome !== 'MOUNTAIN' && biome !== 'GRASSY_MOUNTAIN' && biome !== 'FIELDS') {
+              // === SAFE HOUSE (chunk -11, 0) ===
+              if (isAlley && !isSidewalk) {
+                this.setBlock(lx, 0, lz, TYPES.GRASS); // flat grass yard
+                // Big drive-in garage (16 wide, 12 deep)
+                let gx1 = 16, gx2 = 32, gz1 = 14, gz2 = 26, garageH = 6;
+                let inGarage = (lx >= gx1 && lx <= gx2 && lz >= gz1 && lz <= gz2);
+                let isGarageWall = inGarage && (lx === gx1 || lx === gx2 || lz === gz1 || lz === gz2);
+                let isGarageDoor = (lz === gz1 && lx >= 20 && lx <= 28);
+                // Driveway from road to garage
+                let isDriveway = (lx >= 19 && lx <= 29 && lz >= 12 && lz < gz1);
+                if (isDriveway) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                // Garage structure
+                if (inGarage) {
+                  this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                  for (let by = 1; by <= garageH; by++) {
+                    if (isGarageDoor && by <= 5) continue;
+                    if (isGarageWall) this.setBlock(lx, by, lz, TYPES.CONCRETE_DARK);
+                  }
+                  this.setBlock(lx, garageH + 1, lz, TYPES.CONCRETE_DARK); // flat roof
+                }
+                // Main house behind garage
+                let hx1 = 16, hx2 = 34, hz1 = 28, hz2 = 40, wallH = 8;
+                let hMidX = 25, hMidZ = 34;
+                let inHouse = (lx >= hx1 && lx <= hx2 && lz >= hz1 && lz <= hz2);
+                let isHouseWall = inHouse && (lx === hx1 || lx === hx2 || lz === hz1 || lz === hz2);
+                let isDoor = (lz === hz1 && lx >= hMidX - 1 && lx <= hMidX + 1);
+                let isPath = (lx >= 20 && lx <= 28 && lz > gz2 && lz < hz1);
+                if (isPath) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                if (inHouse) {
+                  for (let by = 1; by <= wallH; by++) {
+                    if (isDoor && by <= 4) continue;
+                    if (isHouseWall) {
+                      let isWindow = (by >= 3 && by <= 4 || by >= 6 && by <= 7) &&
+                        (lz !== hz1 && lz !== hz2 ? (lx === hx1 || lx === hx2) && (lz % 4 === 1 || lz % 4 === 2) :
+                        (lx % 4 === 1 || lx % 4 === 2)) && !isDoor;
+                      if (isWindow) this.setBlock(lx, by, lz, TYPES.GLASS_BLUE);
+                      else {
+                        let isCorner = (lx === hx1 || lx === hx2) && (lz === hz1 || lz === hz2);
+                        this.setBlock(lx, by, lz, isCorner ? TYPES.BRICK_RED : TYPES.PLASTER_WARM);
+                      }
+                    } else {
+                      if (by === 1) this.setBlock(lx, by, lz, TYPES.WOOD);
+                      if (by === 5) this.setBlock(lx, by, lz, TYPES.WOOD);
+                    }
+                  }
+                  if (isDoor) this.setBlock(lx, 5, lz, TYPES.WOOD);
+                  let dzC = Math.abs(lz - hMidZ);
+                  let roofH = wallH + Math.floor((hz2 - hz1) / 2) + 1 - dzC;
+                  if (roofH > wallH) {
+                    for (let ry = wallH + 1; ry <= roofH; ry++) {
+                      if (lx === hx1 || lx === hx2 || ry === roofH) this.setBlock(lx, ry, lz, TYPES.BRICK_RED);
+                    }
+                  }
+                }
+                // Palm tree
+                if (lx === 38 && lz === 20) {
+                  for (let ty = 1; ty <= 7; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
+                  for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
+                    if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
+                      this.setBlock(lx+dx2, 8, lz+dz2, TYPES.LEAVES);
+                  }
+                  for (let dx2 = -3; dx2 <= 3; dx2++) for (let dz2 = -3; dz2 <= 3; dz2++) {
+                    if (Math.abs(dx2) + Math.abs(dz2) === 3 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
+                      this.setBlock(lx+dx2, 7, lz+dz2, TYPES.LEAVES);
+                  }
+                }
+                // Wood fence around yard
+                if (!inHouse && !inGarage && !isDriveway && !isPath) {
+                  if (((lx === 14 || lx === 42) && lz > 12 && lz < 44) || (lz === 43 && lx > 14 && lx < 42))
+                    this.setBlock(lx, 1, lz, TYPES.WOOD);
+                }
+              } else if (canBuild && buildingHeight > 0 && !isPark && biome !== 'MOUNTAIN' && biome !== 'GRASSY_MOUNTAIN' && biome !== 'FIELDS') {
                 // Building footprint - smaller for suburban
                 let xOffset = Math.floor((hash2D(this.cx, 1) % 1) * 3), zOffset = Math.floor((hash2D(1, this.cz) % 1) * 3);
                 let wShrink = Math.floor((hash2D(this.cx, 2) % 1) * 4), dShrink = Math.floor((hash2D(2, this.cz) % 1) * 4);
@@ -4774,101 +4859,7 @@
                     for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? groundType : subSoilType);
                     if (subHill === 0) this.setBlock(lx, 0, lz, groundType);
 
-                    // === SAFE HOUSE ===
-                    if (isAlley) {
-                      let hx1 = 18, hx2 = 30, hz1 = 18, hz2 = 32;
-                      let hMidX = 24, hMidZ = 25, wallH = 8;
-                      let inHouse = (lx >= hx1 && lx <= hx2 && lz >= hz1 && lz <= hz2);
-                      let isHouseWall = inHouse && (lx === hx1 || lx === hx2 || lz === hz1 || lz === hz2);
-                      let isDoor = (lz === hz1 && lx >= hMidX - 1 && lx <= hMidX + 1);
-                      let isPorch = (lx >= hx1 && lx <= hx2 && lz >= hz1 - 3 && lz < hz1);
-                      let isDriveway = (lx >= hMidX - 2 && lx <= hMidX + 2 && lz >= ROAD_WIDTH && lz < hz1 - 3);
-                      // Garage on right side
-                      let gx1 = hx2 + 1, gx2 = hx2 + 6, gz1 = hz1 + 2, gz2 = hz1 + 10;
-                      let inGarage = (lx >= gx1 && lx <= gx2 && lz >= gz1 && lz <= gz2);
-                      let isGarageWall = inGarage && (lx === gx1 || lx === gx2 || lz === gz1 || lz === gz2);
-                      let isGarageDoor = (lz === gz1 && lx >= gx1 + 1 && lx <= gx2 - 1);
-
-                      // Ground
-                      if (isDriveway || isPorch) {
-                        this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                      } else if (!inHouse && !inGarage) {
-                        this.setBlock(lx, 0, lz, TYPES.GRASS);
-                      }
-
-                      // Main house
-                      if (inHouse) {
-                        for (let by = 1; by <= wallH; by++) {
-                          if (isDoor && by <= 4) continue;
-                          if (isHouseWall) {
-                            let isWindow = (by >= 3 && by <= 4 || by >= 6 && by <= 7) &&
-                              (lz !== hz1 && lz !== hz2 ? (lx === hx1 || lx === hx2) && (lz % 4 === 1 || lz % 4 === 2) :
-                              (lx % 4 === 1 || lx % 4 === 2)) && !isDoor;
-                            if (isWindow) {
-                              this.setBlock(lx, by, lz, TYPES.GLASS_BLUE);
-                            } else {
-                              let isCorner = (lx === hx1 || lx === hx2) && (lz === hz1 || lz === hz2);
-                              this.setBlock(lx, by, lz, isCorner ? TYPES.BRICK_RED : TYPES.PLASTER_WARM);
-                            }
-                          } else {
-                            if (by === 1) this.setBlock(lx, by, lz, TYPES.WOOD);
-                            if (by === 5) this.setBlock(lx, by, lz, TYPES.WOOD);
-                          }
-                        }
-                        if (isDoor) this.setBlock(lx, 5, lz, TYPES.WOOD);
-                        // Red peaked roof (ridge along X)
-                        let dzC = Math.abs(lz - hMidZ);
-                        let roofH = wallH + Math.floor((hz2 - hz1) / 2) + 1 - dzC;
-                        if (roofH > wallH) {
-                          for (let ry = wallH + 1; ry <= roofH; ry++) {
-                            if (lx === hx1 || lx === hx2 || ry === roofH) this.setBlock(lx, ry, lz, TYPES.BRICK_RED);
-                          }
-                        }
-                      }
-
-                      // Porch
-                      if (isPorch && !inHouse) {
-                        this.setBlock(lx, 1, lz, TYPES.WOOD);
-                        if ((lx === hx1 || lx === hx2) && lz === hz1 - 3) {
-                          for (let py = 2; py <= 4; py++) this.setBlock(lx, py, lz, TYPES.WOOD);
-                        }
-                        if (lz === hz1 - 1 || lz === hz1 - 3 || lx === hx1 || lx === hx2) {
-                          this.setBlock(lx, 4, lz, TYPES.WOOD);
-                        }
-                      }
-
-                      // Garage
-                      if (inGarage) {
-                        let garageH = 5;
-                        for (let by = 1; by <= garageH; by++) {
-                          if (isGarageDoor && by <= 4) continue;
-                          if (isGarageWall) this.setBlock(lx, by, lz, TYPES.PLASTER_WARM);
-                          else if (by === 1) this.setBlock(lx, by, lz, TYPES.CONCRETE);
-                        }
-                        this.setBlock(lx, 6, lz, TYPES.BRICK_RED);
-                      }
-
-                      // Palm tree
-                      if (lx === 14 && lz === 17) {
-                        for (let ty = 1; ty <= 7; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
-                        for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
-                          if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
-                            this.setBlock(lx+dx2, 8, lz+dz2, TYPES.LEAVES);
-                        }
-                        for (let dx2 = -3; dx2 <= 3; dx2++) for (let dz2 = -3; dz2 <= 3; dz2++) {
-                          if (Math.abs(dx2) + Math.abs(dz2) === 3 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
-                            this.setBlock(lx+dx2, 7, lz+dz2, TYPES.LEAVES);
-                        }
-                      }
-
-                      // Fence around yard
-                      if (!inHouse && !isPorch && !inGarage && !isDriveway && lz > ROAD_WIDTH) {
-                        if (((lx === 8 || lx === 40) && lz > ROAD_WIDTH + 1 && lz < CHUNK_SIZE - 4) ||
-                            (lz === CHUNK_SIZE - 5 && lx > 8 && lx < 40)) {
-                          this.setBlock(lx, 1, lz, TYPES.WOOD);
-                        }
-                      }
-                    }
+                    // Safe house is handled in its own code path above (isAlley && !isSidewalk)
 
                     let subType = hash2D(this.cx * 13, this.cz * 17);
                     // Front yard fence along sidewalk edge
@@ -6303,11 +6294,14 @@
       let ck = '-11,0';
       if (!activeChunks.has(ck)) return;
       safeHouseCarsSpawned = true;
-      let colors = [0x882222, 0x224488, 0x888888];
+      let colors = [0x882222, 0x224488, 0x888888, 0x448844, 0x666666];
+      // Chunk origin: -528, 0. Garage at lx 16-32, lz 14-26. Road at lz < 12.
       let positions = [
-        { x: ALLEY_POS.x - 4, z: ALLEY_POS.z - 18, yaw: Math.PI * 0.5 },
-        { x: ALLEY_POS.x + 3, z: ALLEY_POS.z - 18, yaw: Math.PI * 0.5 },
-        { x: ALLEY_POS.x + 10, z: ALLEY_POS.z - 5, yaw: 0 }
+        { x: -528 + 34, z: 8, yaw: Math.PI * 0.5 },  // on road east of garage
+        { x: -528 + 36, z: 8, yaw: Math.PI * 0.5 },  // next to it
+        { x: -528 + 10, z: 20, yaw: 0 },              // on road west of property
+        { x: -528 + 10, z: 28, yaw: 0 },              // further along road
+        { x: -528 + 22, z: 18, yaw: Math.PI },         // inside garage
       ];
       for (let i = 0; i < positions.length; i++) {
         let c = new Vehicle('CIVILIAN', positions[i].x, positions[i].z, colors[i]);
@@ -7235,12 +7229,13 @@
       }
       // Success screen cinematic camera (runs even when paused)
       if (isPlaying && mission.state === 'SUCCESS') {
+        let successPos = mission.successPos || player.pos;
         let spinDist = 8, spinSpeed = 0.5;
         let time = Date.now() * 0.001;
-        let camX = player.pos.x + Math.cos(time * spinSpeed) * spinDist;
-        let camZ = player.pos.z + Math.sin(time * spinSpeed) * spinDist;
-        camera.position.set(camX, player.pos.y + 4, camZ);
-        camera.lookAt(player.pos.clone().add(new THREE.Vector3(0, 2, 0)));
+        let camX = successPos.x + Math.cos(time * spinSpeed) * spinDist;
+        let camZ = successPos.z + Math.sin(time * spinSpeed) * spinDist;
+        camera.position.set(camX, successPos.y + 4, camZ);
+        camera.lookAt(successPos.clone().add(new THREE.Vector3(0, 2, 0)));
         skybox.position.copy(camera.position);
         updateChunks(); // Keep chunks loaded around player during success screen
       }
@@ -7362,10 +7357,6 @@
           if (wantedLevel === 0) {
             showPhoneMessage("Boss: Heat's dying down. Good work staying out of sight.", 6000);
             copsKilled = 0; chaos = 0; // Reset
-            if (mission.state === 'DRIVE_TO_ALLEY') {
-              // Mission 2 complete - arrived at alley and lost cops
-              triggerMissionSuccess();
-            }
           } else {
             showPhoneMessage("Losing the heat... keep it up!", 3000);
           }
