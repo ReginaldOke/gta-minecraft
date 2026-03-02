@@ -238,10 +238,11 @@
       left: 50%;
       transform: translate(-50%, -50%);
       color: white;
-      font-size: 22px;
+      font-size: 16px;
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
       z-index: 1;
+      white-space: nowrap;
     }
     #demo-label {
       color: #ff8800;
@@ -335,9 +336,11 @@
       height: auto;
       min-height: 180px;
       max-height: 50vh;
-      background: #111;
+      background: rgba(17, 17, 17, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-radius: 20px 20px 0 0;
-      border: 4px solid #444;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       border-bottom: none;
       display: flex;
       flex-direction: column;
@@ -387,7 +390,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.55);
       z-index: 9999;
       display: none;
       flex-direction: column;
@@ -424,7 +427,10 @@
       display: flex;
       align-items: center;
       gap: 20px;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       padding: 15px 30px;
       border-radius: 12px;
       width: 450px;
@@ -434,7 +440,9 @@
     .ms-icon { font-size: 36px; }
 
     .ms-btn {
-      margin-top: 50px;
+      position: sticky;
+      bottom: 20px;
+      margin-top: 30px;
       padding: 20px 60px;
       font-size: 28px;
       background: #4CAF50;
@@ -446,6 +454,8 @@
       transition: opacity 0.5s;
       font-weight: bold;
       box-shadow: 0 6px 0 #2e7d32;
+      z-index: 10;
+      flex-shrink: 0;
     }
 
     .ms-btn:active {
@@ -459,7 +469,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.55);
       -webkit-transform: translateZ(0);
       display: flex;
       flex-direction: column;
@@ -480,7 +490,7 @@
       cursor: pointer;
       border-radius: 8px;
       font-weight: bold;
-      margin-top: 20px;
+      margin-top: 40px;
       transition: transform 0.1s, background 0.2s;
       font-family: inherit;
       box-shadow: 0 6px 0 #cc3700;
@@ -502,7 +512,7 @@
       flex-direction: column;
       gap: 15px;
       align-items: center;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.55);
       padding: 25px 40px;
       border-radius: 12px;
       pointer-events: none;
@@ -590,17 +600,24 @@
     }
 
     .m-btn {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      background: rgba(255, 69, 0, 0.8);
+      width: 58px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(255, 69, 0, 0.55);
       color: white;
-      border: 2px solid #fff;
+      border: 1px solid rgba(255, 69, 0, 0.8);
       font-weight: bold;
       font-size: 11px;
+      font-family: 'Arial Black', 'Impact', sans-serif;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.7);
       display: flex;
       align-items: center;
       justify-content: center;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
     }
 
     /* Hide tutorial controls overlay on mobile - too cluttered */
@@ -830,7 +847,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.55);
       -webkit-transform: translateZ(0);
       display: none;
       flex-direction: column;
@@ -861,10 +878,12 @@
     }
 
     .pause-panel {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       padding: 25px;
       border-radius: 12px;
-      border: 2px solid #555;
+      border: 1px solid rgba(255, 255, 255, 0.15);
       text-align: left;
       flex: 1;
     }
@@ -885,7 +904,7 @@
 
     #store-ui {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.95); display: none; z-index: 9999;
+      background: rgba(0,0,0,0.7); display: none; z-index: 9999;
       flex-direction: column; align-items: center; color: white;
       overflow: hidden;
     }
@@ -929,7 +948,7 @@
     #fullscreen-map {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.92);
+      background: rgba(0, 0, 0, 0.7);
       z-index: 200;
       display: none;
       align-items: center;
@@ -1042,14 +1061,14 @@
       <div id="joystick-knob"></div>
     </div>
     <div class="action-btns">
-      <button id="btn-interact" class="m-btn" style="display:none; background:rgba(34,197,94,0.85);">Drive</button>
-      <button id="btn-nos" class="m-btn" style="display:none; background:rgba(56,189,248,0.85); font-size:10px;">NOS</button>
-      <button id="btn-build" class="m-btn" style="display:none; background:rgba(255,204,0,0.4); font-size:12px;">Build</button>
-      <button id="btn-jump" class="m-btn">Jump</button>
+      <button id="btn-interact" class="m-btn" style="display:none; background:rgba(34,197,94,0.45); border-color:rgba(34,197,94,0.8);">Drive</button>
+      <button id="btn-nos" class="m-btn" style="display:none; background:rgba(0,180,255,0.4); border-color:rgba(0,180,255,0.8); font-size:10px;">NOS</button>
+      <button id="btn-build" class="m-btn" style="display:none; background:rgba(34,85,204,0.45); border-color:rgba(34,85,204,0.8); font-size:10px;">Build</button>
+      <button id="btn-jump" class="m-btn" style="background:rgba(255,69,0,0.45); border-color:rgba(255,69,0,0.8);">Jump</button>
     </div>
   </div>
 
-  <div id="mobile-help-modal" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; background:rgba(0,0,0,0.85); color:white; font-family:sans-serif;">
+  <div id="mobile-help-modal" style="display:none; position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; background:rgba(0,0,0,0.55); color:white; font-family:sans-serif;">
     <div style="position:absolute; top:50%; left:0; right:0; transform:translateY(-50%); text-align:center; padding:0 30px;">
       <div style="font-size:20px; line-height:2.5; text-align:left; max-width:300px; margin:0 auto;">
         <div>Use joystick to move</div>
@@ -1063,7 +1082,7 @@
   <div id="fullscreen-map">
     <div id="fullmap-title">CITY MAP</div>
     <canvas id="fullmap-canvas" width="600" height="600"></canvas>
-    <div id="fullmap-hint">Press M or tap to close</div>
+    <div id="fullmap-hint"></div>
   </div>
 
   <div id="start-screen">
@@ -1102,7 +1121,7 @@
       </div>
     </div>
     <button class="play-btn" onclick="togglePause()">RESUME</button>
-    <div style="position:absolute; bottom:20px; left:0; right:0; text-align:center; font-size:12px; color:#888; font-family:sans-serif;">Music by: Bread Club</div>
+    <div style="position:absolute; bottom:20px; left:0; right:0; text-align:center; font-size:14px; color:#888; font-family:sans-serif;">Music by: Bread Club</div>
   </div>
 
   <!-- Minecraft-style Hotbar -->
@@ -1484,20 +1503,20 @@
 
     // --- Store / Inventory ---
     const STORE_ITEMS = [
-      { id: 'health_pack', name: 'Health Pack', price: 200000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
-      { id: 'armor', name: 'Body Armor', price: 60000, icon: '🛡️', type: 'equipment', desc: 'Absorbs 500 damage' },
-      { id: 'rocket', name: 'Rocket Launcher', price: 8000, icon: '🚀', type: 'weapon', desc: '5-block blast radius!' },
-      { id: 'grenade', name: 'Grenades (x5)', price: 20000, icon: '💣', type: 'weapon', desc: 'Hold shoot to throw' },
-      { id: 'suit', name: 'Business Suit', price: 6000, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
-      { id: 'balaclava', name: 'Balaclava', price: 2000, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
-      { id: 'minecraft_skin', name: 'Classic Steve', price: 8000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
-      { id: 'gta_outfit', name: 'Street OG', price: 12000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
-      { id: 'tattoo', name: 'Sleeve Tattoos', price: 12000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
-      { id: 'spray', name: 'Spray Can', price: 200000, icon: '🎨', type: 'tool', desc: 'Tag the city' },
-      { id: 'buy_car', name: 'Sports Car', price: 400000, icon: '🏎️', type: 'vehicle', desc: 'Fast red convertible!' },
-      { id: 'buy_tank', name: 'Tank', price: 1200000, icon: '🪖', type: 'vehicle', desc: 'Armored & deadly' },
-      { id: 'buy_plane', name: 'Plane', price: 3200000, icon: '✈️', type: 'vehicle', desc: 'Take to the skies!' },
-      { id: 'buy_flycar', name: 'Flying Car', price: 3600000, icon: '🛸', type: 'vehicle', desc: 'Car that flies!' }
+      { id: 'health_pack', name: 'Health Pack', price: 600000, icon: '💊', type: 'consumable', desc: 'Restore full health' },
+      { id: 'armor', name: 'Body Armor', price: 180000, icon: '🛡️', type: 'equipment', desc: 'Absorbs 500 damage' },
+      { id: 'rocket', name: 'Rocket Launcher', price: 100, icon: '🚀', type: 'weapon', desc: '5-block blast radius!' },
+      { id: 'grenade', name: 'Grenades (x5)', price: 60000, icon: '💣', type: 'weapon', desc: 'Hold shoot to throw' },
+      { id: 'suit', name: 'Business Suit', price: 18000, icon: '🤵', type: 'outfit', desc: 'Navy suit look' },
+      { id: 'balaclava', name: 'Balaclava', price: 6000, icon: '🎭', type: 'outfit', desc: 'Hide your face' },
+      { id: 'minecraft_skin', name: 'Classic Steve', price: 24000, icon: '⛏️', type: 'outfit', desc: 'Minecraft classic look' },
+      { id: 'gta_outfit', name: 'Street OG', price: 36000, icon: '🔫', type: 'outfit', desc: 'Classic gangster look' },
+      { id: 'tattoo', name: 'Sleeve Tattoos', price: 36000, icon: '💪', type: 'cosmetic', desc: 'Ink up your arms' },
+      { id: 'spray', name: 'Spray Can', price: 600000, icon: '🎨', type: 'tool', desc: 'Tag the city' },
+      { id: 'buy_car', name: 'Sports Car', price: 1200000, icon: '🏎️', type: 'vehicle', desc: 'Fast red convertible!' },
+      { id: 'buy_tank', name: 'Tank', price: 3600000, icon: '🪖', type: 'vehicle', desc: 'Armored & deadly' },
+      { id: 'buy_plane', name: 'Plane', price: 9600000, icon: '✈️', type: 'vehicle', desc: 'Take to the skies!' },
+      { id: 'buy_flycar', name: 'Flying Car', price: 10800000, icon: '🛸', type: 'vehicle', desc: 'Car that flies!' }
     ];
     let playerInventory = new Set();
     let currentWeapon = 'pistol';
@@ -2035,17 +2054,17 @@
       let tankColors = [0x3b4d2e, 0x556b2f, 0x4a5a3a, 0x2d3b1f, 0x5a6b4a];
       let planeColors = [0xffffff, 0xcc0000, 0x0044cc, 0xffcc00, 0x00cc44];
       for (let i = 0; i < 5; i++) {
-        // Tanks on grass east of mansion
-        let tx = ISLAND_X + 20 + i * 8;
-        let tz = ISLAND_Z + 30;
+        // Tanks on grass north side of airfield
+        let tx = ISLAND_X + 20 - 16 + i * 8;
+        let tz = ISLAND_Z + 30 + 12;
         let tank = new Vehicle('TANK', tx, tz, tankColors[i]);
         tank.parked = true; tank.vel.set(0, 0, 0);
         vehicles.push(tank);
-        // Planes along south runway
-        let px = ISLAND_X - 35 + i * 18;
-        let pz = ISLAND_Z - 30;
+        // Planes along airfield runway (next to mansion)
+        let px = ISLAND_X + 20 - 20 + i * 10;
+        let pz = ISLAND_Z + 30;
         let plane = new Vehicle('PLANE', px, pz, planeColors[i]);
-        plane.parked = true; plane.vel.set(0, 0, 0);
+        plane.parked = true; plane.vel.set(0, 0, 0); plane.yaw = Math.PI * 0.5;
         vehicles.push(plane);
       }
     }
@@ -2093,7 +2112,7 @@
       if (storePurchases.length > 0) {
         let totalSpent = storePurchases.reduce((s, p) => s + p.price, 0);
         let overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.9); border:2px solid #4CAF50; border-radius:12px; padding:20px 30px; color:white; font-family:sans-serif; text-align:center; pointer-events:none; min-width:250px;';
+        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.6); border:2px solid #4CAF50; border-radius:12px; padding:20px 30px; color:white; font-family:sans-serif; text-align:center; pointer-events:none; min-width:250px;';
         let itemsHtml = storePurchases.map(p => '<div style="display:flex; align-items:center; justify-content:space-between; padding:4px 0; border-bottom:1px solid #333;"><span>' + p.icon + ' ' + p.name + '</span><span style="color:#4CAF50;">-$' + p.price.toLocaleString() + '</span></div>').join('');
         overlay.innerHTML = '<h3 style="color:#4CAF50; margin:0 0 10px 0; font-size:18px;">🛒 PURCHASED</h3>' + itemsHtml + '<div style="margin-top:10px; padding-top:8px; border-top:2px solid #4CAF50; font-size:16px; font-weight:bold;">Total: <span style="color:#ff6600;">-$' + totalSpent.toLocaleString() + '</span></div>';
         document.body.appendChild(overlay);
@@ -2235,7 +2254,7 @@
         // Desktop: overlay in center of screen
         let overlay = document.createElement('div');
         overlay.id = 'plane-controls-overlay';
-        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.85); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
+        overlay.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:500; background:rgba(0,0,0,0.6); border:2px solid #ffcc00; border-radius:12px; padding:20px 30px; color:white; font-size:18px; text-align:center; pointer-events:none; -webkit-transform:translate(-50%,-50%) translateZ(0);';
         overlay.innerHTML = '<div style="color:#ffcc00; font-size:24px; font-weight:bold; margin-bottom:12px;">FLIGHT CONTROLS</div>' +
           '<div style="line-height:2.2; text-align:left; display:inline-block;">' +
           '<span style="color:#ffcc00; font-weight:bold;">W</span> — Accelerate forward<br>' +
@@ -2504,15 +2523,15 @@
     function placeBlock() {
       if (!buildMode || !selectedBlockType || !(blockInventory[selectedBlockType] > 0)) return;
       let placed = false;
-      let ray = blockRaycast(7);
+      let ray = blockRaycast(12);
       if (ray && ray.place && getBlock(ray.place.x, ray.place.y, ray.place.z) === TYPES.EMPTY) {
         setBlockGlobal(ray.place.x, ray.place.y, ray.place.z, selectedBlockType);
         placed = true;
       } else {
-        // If no block hit, place on ground 5 blocks ahead
+        // If no block hit, place on ground 8 blocks ahead
         let camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
         let pos = player.pos.clone().add(new THREE.Vector3(0, 1.5, 0));
-        let target = pos.clone().add(camDir.clone().multiplyScalar(5));
+        let target = pos.clone().add(camDir.clone().multiplyScalar(8));
         let tx = Math.round(target.x), tz = Math.round(target.z);
         for (let ty = Math.round(target.y) + 5; ty >= -3; ty--) {
           if (getBlock(tx, ty, tz) !== TYPES.EMPTY) {
@@ -2592,7 +2611,7 @@
       if (!buildMode || currentVehicle || isPaused || !isPlaying || totalBlocks <= 0) {
         ghostBlock.visible = false; return;
       }
-      let ray = blockRaycast(7);
+      let ray = blockRaycast(12);
       if (ray && ray.place && getBlock(ray.place.x, ray.place.y, ray.place.z) === TYPES.EMPTY) {
         ghostBlock.visible = true;
         ghostBlock.position.set(ray.place.x, ray.place.y, ray.place.z);
@@ -2972,7 +2991,7 @@
         let gunTip = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.15), new THREE.MeshBasicMaterial({ color: 0xffaa00 }));
         gunTip.position.set(0, 0, -0.5);
         let gunHandle = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.15), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 }));
-        gunHandle.position.set(0, 0.18, 0.15);
+        gunHandle.position.set(0, -0.18, 0.15);
         this.gun.add(gunBarrel, gunTip, gunHandle);
         this.gun.position.set(0.55, 1.15, -0.5);
         this.group.add(this.gun);
@@ -3095,6 +3114,17 @@
                 else if (y === 2 && x === Math.floor(w / 2) && z > 3 && z < d - 3) { isValid = true; bColor = 0x888888; } // Center beam
                 else if (y === 2 && z === d - 2 && Math.abs(cx) <= 1) { isValid = true; bColor = 0x444444; } // Engine
                 else if (y === 3 && z === d - 2 && x === Math.floor(w / 2)) { isValid = true; bColor = 0x333333; } // Engine top
+              }
+              // Tractor: green body, big black wheels, small cab
+              if (type === 'TRACTOR' && !isBoat) {
+                if (isWheel) { bColor = 0x222222; }
+                else if (isUnderbody) { bColor = 0x333333; }
+                else if (isChassis) {
+                  if (bColor !== 0xffffaa && bColor !== 0xff0000 && bColor !== 0x111111 && bColor !== 0x222222) bColor = 0xcc2222; // Red body
+                } else if (isCabin) {
+                  if (bColor === 0x556688) {} // Keep windows
+                  else bColor = 0xcc2222;
+                } else if (isRoof) { bColor = 0x111111; }
               }
               if (!isValid) continue;
               let lx = (x - w / 2 + 0.5) * blockSize, ly = y * blockSize, lz = (z - d / 2 + 0.5) * blockSize;
@@ -3607,12 +3637,12 @@
       storeMarkerGroup.visible = false;
       scene.add(storeMarkerGroup);
 
-      // Alley Safe Zone Marker (blue)
+      // Safe House Marker (yellow)
       alleyMarkerGroup = new THREE.Group();
       alleyMarkerGroup.position.copy(ALLEY_POS).setY(0);
-      let alleyCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2244aa, emissiveIntensity: 0.8 }));
+      let alleyCrystal = new THREE.Mesh(markerGeo.clone(), new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xaa8800, emissiveIntensity: 0.8 }));
       alleyCrystal.position.set(0, 15, 0); alleyMarkerGroup.add(alleyCrystal);
-      let alleyPillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
+      let alleyPillar = new THREE.Mesh(pillarGeo.clone(), new THREE.MeshBasicMaterial({ color: 0xffcc00, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false }));
       alleyPillar.position.set(0, 75, 0); alleyMarkerGroup.add(alleyPillar);
       alleyMarkerGroup.visible = false;
       scene.add(alleyMarkerGroup);
@@ -3712,8 +3742,8 @@
       let ghostGeo = new THREE.BoxGeometry(1.02, 1.02, 1.02);
       let ghostEdges = new THREE.EdgesGeometry(ghostGeo);
       ghostBlock = new THREE.Group();
-      let ghostWire = new THREE.LineSegments(ghostEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
-      let ghostFill = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false }));
+      let ghostWire = new THREE.LineSegments(ghostEdges, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+      let ghostFill = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }));
       ghostBlock.add(ghostWire); ghostBlock.add(ghostFill);
       ghostBlock.visible = false;
       scene.add(ghostBlock);
@@ -3748,6 +3778,10 @@
       document.getElementById('start-btn').addEventListener('click', startGame);
       document.getElementById('phone-dismiss').addEventListener('click', dismissPhone);
       document.getElementById('phone-ui').addEventListener('click', dismissPhone);
+      // Swipe up to dismiss phone on mobile
+      let _phoneSwipeY = 0;
+      document.getElementById('phone-ui').addEventListener('touchstart', e => { _phoneSwipeY = e.touches[0].clientY; }, { passive: true });
+      document.getElementById('phone-ui').addEventListener('touchend', e => { let dy = _phoneSwipeY - (e.changedTouches[0] ? e.changedTouches[0].clientY : _phoneSwipeY); if (dy > 40) dismissPhone(); }, { passive: true });
       document.getElementById('mobile-help-modal').addEventListener('click', () => {
         document.getElementById('mobile-help-modal').style.display = 'none';
       });
@@ -3858,9 +3892,21 @@
             if (v !== currentVehicle && !v.isDead && this.pos.distanceToSquared(v.pos) < 12.25) {
               // Don't let stray bullets damage parked planes at the airport
               if (v.type === 'PLANE' && v.parked && v !== currentVehicle) continue;
-              let localHit = this.pos.clone().sub(v.pos).applyAxisAngle(_upVec, -v.yaw);
-              v.voxelGroup.damageAtLocal(localHit, 1.5, v.mesh.matrixWorld, this.vel);
-              v.takeDamage(this.isPlayer ? 100 : 5, this.isPlayer); // Player shreds cops
+              if (this.isPlayer && this.isRocket) {
+                // Rocket direct hit on vehicle: trigger explosion
+                let rr = isMobileDevice ? 4 : 5;
+                for (let dx = -rr; dx <= rr; dx++) for (let dy = -rr; dy <= rr; dy++) for (let dz = -rr; dz <= rr; dz++)
+                  if (dx*dx+dy*dy+dz*dz <= rr*rr) triggerDestroy(this.pos.x+dx, this.pos.y+dy, this.pos.z+dz, this.vel, true);
+                for (let fi = 0; fi < (isMobileDevice ? 8 : 15); fi++) spawnPhysicsParticle(this.pos.x, this.pos.y, this.pos.z, 'FIRE', this.vel);
+                for (let si = 0; si < (isMobileDevice ? 4 : 8); si++) spawnPhysicsParticle(this.pos.x, this.pos.y+1, this.pos.z, 'SMOKE', null, true);
+                // Destroy hit vehicle + damage nearby
+                v.takeDamage(2000, true);
+                for (let ov of vehicles) if (ov !== v && ov.pos.distanceToSquared(this.pos) < 100 && !(ov.type === 'PLANE' && ov.parked)) ov.takeDamage(300, true);
+              } else {
+                let localHit = this.pos.clone().sub(v.pos).applyAxisAngle(_upVec, -v.yaw);
+                v.voxelGroup.damageAtLocal(localHit, 1.5, v.mesh.matrixWorld, this.vel);
+                v.takeDamage(this.isPlayer ? 100 : 5, this.isPlayer);
+              }
               hit = true; break;
             }
           }
@@ -3907,6 +3953,7 @@
         const isStore = (this.cx === -2 && this.cz === 0);
         const isCarpark = (this.cx === 4 && this.cz === -1);
         const isAlley = (this.cx === -11 && this.cz === 0);
+        const caveData = CAVE_LOCATIONS.find(c => c.cx === this.cx && c.cz === this.cz);
         let h = hash2D(this.cx, this.cz);
 
         // Material palette per chunk
@@ -4067,6 +4114,10 @@
 
               // === Runway (south side, wide and prominent) ===
               let islandRunway = Math.abs(wz - (ISLAND_Z - 25)) < 4 && wx > ISLAND_X - 45 && wx < ISLAND_X + 45 && !isWater;
+              // === Flat airfield next to mansion (east side) ===
+              let airfieldCX = ISLAND_X + 20, airfieldCZ = ISLAND_Z + 30;
+              let isAirfield = wx >= airfieldCX - 25 && wx <= airfieldCX + 25 && wz >= airfieldCZ - 20 && wz <= airfieldCZ + 20 && !isWater;
+              let isMansionRunway = Math.abs(wz - airfieldCZ) < 3 && wx >= airfieldCX - 25 && wx <= airfieldCX + 25 && !isWater;
 
               // === Fountain/courtyard ===
               let fxOff = wx - ISLAND_X, fzOff = wz - (ISLAND_Z + 20);
@@ -4116,14 +4167,25 @@
                 continue;
               } else if (islandRunway) {
                 this.setBlock(lx, 0, lz, TYPES.ROAD);
-                // Center line markings (dashed white)
                 if (Math.abs(wz - (ISLAND_Z - 25)) < 1 && Math.abs(wx - ISLAND_X) % 8 < 4) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                // Edge lines (solid white)
                 if (Math.abs(wz - (ISLAND_Z - 25)) >= 3) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
-                // Threshold markings at ends
                 if ((wx < ISLAND_X - 38 || wx > ISLAND_X + 38) && Math.abs(wz - (ISLAND_Z - 25)) < 3) this.setBlock(lx, 0, lz, TYPES.YELLOW);
                 continue;
-              } else if (isIslandMt && !isCastle) {
+              } else if (isAirfield && !isCastle) {
+                // Flat airfield: runway strip + surrounding grass
+                if (isMansionRunway) {
+                  this.setBlock(lx, 0, lz, TYPES.ROAD);
+                  // Center dashed line
+                  if (Math.abs(wz - airfieldCZ) < 1 && Math.abs(wx - airfieldCX) % 8 < 4) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                  // Edge lines
+                  if (Math.abs(wz - airfieldCZ) >= 2) this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                  // Threshold markings
+                  if ((wx < airfieldCX - 20 || wx > airfieldCX + 20) && Math.abs(wz - airfieldCZ) < 2) this.setBlock(lx, 0, lz, TYPES.YELLOW);
+                } else {
+                  this.setBlock(lx, 0, lz, TYPES.GRASS);
+                }
+                continue;
+              } else if (isIslandMt && !isCastle && !isAirfield) {
                 // Large organic mountain with variable height
                 let mtFactor = 1 - mtIslandDist / mtRadius;
                 let mtH = Math.floor(mtFactor * 50 + smoothNoise(wx * 0.06, wz * 0.06) * 10);
@@ -4428,66 +4490,7 @@
                 this.setBlock(lx, 0, lz, TYPES.SIDEWALK);
               } else {
                 this.setBlock(lx, 0, lz, isPark ? groundType : TYPES.CONCRETE);
-                // === FARM SAFE HOUSE ===
-                if (isAlley && !isRoad) {
-                  // Dirt path from road to barn
-                  let pathCX = 24, pathHW = 3;
-                  let isPath = (lx >= pathCX - pathHW && lx <= pathCX + pathHW && lz >= ROAD_WIDTH && lz <= 38);
-                  if (isPath) {
-                    this.setBlock(lx, 0, lz, TYPES.DIRT);
-                  } else {
-                    this.setBlock(lx, 0, lz, TYPES.GRASS);
-                    // === BARN (safe house) ===
-                    let barnX1 = 18, barnX2 = 30, barnZ1 = 30, barnZ2 = 44;
-                    let barnMidX = 24, barnH = 7;
-                    let inBarn = (lx >= barnX1 && lx <= barnX2 && lz >= barnZ1 && lz <= barnZ2);
-                    let isBarnWall = inBarn && (lx === barnX1 || lx === barnX2 || lz === barnZ1 || lz === barnZ2);
-                    let isBarnDoor = (lz === barnZ1 && lx >= barnMidX - 2 && lx <= barnMidX + 2);
-                    if (inBarn) {
-                      for (let by = 1; by <= barnH; by++) {
-                        if (isBarnDoor && by <= 4) continue; // Door opening
-                        if (isBarnWall) this.setBlock(lx, by, lz, by <= 2 ? TYPES.WOOD : TYPES.BRICK_RED);
-                        else if (by === 1) this.setBlock(lx, by, lz, TYPES.DIRT); // Hay floor
-                      }
-                      // Peaked roof
-                      let dfc = Math.abs(lx - barnMidX);
-                      let roofH = barnH + Math.floor((barnX2 - barnX1) / 2) - dfc;
-                      if (roofH > barnH) {
-                        for (let ry = barnH + 1; ry <= roofH; ry++) {
-                          if (lz === barnZ1 || lz === barnZ2 || ry === roofH) this.setBlock(lx, ry, lz, TYPES.BRICK_BROWN);
-                        }
-                      }
-                      // Hay bales inside
-                      if (!isBarnWall && lz > barnZ1 + 3 && lz < barnZ2 - 1 && lx > barnX1 + 1 && lx < barnX2 - 1 && hash2D(lx * 5, lz * 5) > 0.7) {
-                        this.setBlock(lx, 2, lz, TYPES.YELLOW);
-                        if (hash2D(lx * 7, lz * 7) > 0.5) this.setBlock(lx, 3, lz, TYPES.YELLOW);
-                      }
-                    }
-                    // === FARM ANIMALS (cows) ===
-                    if (!inBarn && lz > ROAD_WIDTH + 2 && hash2D(lx * 3 + 77, lz * 3 + 77) > 0.97) {
-                      // Cow: 3 blocks long, 2 high
-                      if (lx < CHUNK_SIZE - 3) {
-                        this.setBlock(lx, 1, lz, TYPES.WHITE); this.setBlock(lx+1, 1, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, 1, lz, TYPES.WHITE);
-                        this.setBlock(lx, 2, lz, TYPES.WHITE); this.setBlock(lx+2, 2, lz, TYPES.CONCRETE_DARK);
-                      }
-                    }
-                    // === TRACTOR ===
-                    if (!inBarn && lx >= 36 && lx <= 39 && lz >= 20 && lz <= 23) {
-                      let tx = lx - 36, tz = lz - 20;
-                      if (tx < 3 && tz < 3) { this.setBlock(lx, 1, lz, TYPES.RED); }
-                      if (tx === 0 && tz === 0) this.setBlock(lx, 2, lz, TYPES.RED);
-                      if (tx === 1 && tz === 0) this.setBlock(lx, 2, lz, TYPES.CONCRETE_DARK);
-                    }
-                    // === WOODEN FENCES ===
-                    if (!inBarn && (lx === 3 || lx === 45 || lz === CHUNK_SIZE - 3) && lz > ROAD_WIDTH && lz % 2 === 0) {
-                      this.setBlock(lx, 1, lz, TYPES.WOOD);
-                    }
-                    // Fence along path
-                    if ((lx === pathCX - pathHW - 1 || lx === pathCX + pathHW + 1) && lz >= ROAD_WIDTH && lz <= 30 && lz % 2 === 0) {
-                      this.setBlock(lx, 1, lz, TYPES.WOOD);
-                    }
-                  }
-                }
+                // Safe house is handled in suburban zone code path
               }
 
               let margin = ROAD_WIDTH + 1;
@@ -4767,18 +4770,115 @@
                     let subHill = Math.floor(smoothNoise(wx * 0.04, wz * 0.04) * 4);
                     let subHill2 = Math.floor(smoothNoise(wx * 0.08 + 30, wz * 0.08 + 30) * 2);
                     subHill = Math.max(0, subHill + subHill2);
+                    if (isAlley) subHill = 0; // Flat ground at safe house
                     for (let hy = 0; hy <= subHill; hy++) this.setBlock(lx, hy, lz, hy === subHill ? groundType : subSoilType);
                     if (subHill === 0) this.setBlock(lx, 0, lz, groundType);
+
+                    // === SAFE HOUSE ===
+                    if (isAlley) {
+                      let hx1 = 18, hx2 = 30, hz1 = 18, hz2 = 32;
+                      let hMidX = 24, hMidZ = 25, wallH = 8;
+                      let inHouse = (lx >= hx1 && lx <= hx2 && lz >= hz1 && lz <= hz2);
+                      let isHouseWall = inHouse && (lx === hx1 || lx === hx2 || lz === hz1 || lz === hz2);
+                      let isDoor = (lz === hz1 && lx >= hMidX - 1 && lx <= hMidX + 1);
+                      let isPorch = (lx >= hx1 && lx <= hx2 && lz >= hz1 - 3 && lz < hz1);
+                      let isDriveway = (lx >= hMidX - 2 && lx <= hMidX + 2 && lz >= ROAD_WIDTH && lz < hz1 - 3);
+                      // Garage on right side
+                      let gx1 = hx2 + 1, gx2 = hx2 + 6, gz1 = hz1 + 2, gz2 = hz1 + 10;
+                      let inGarage = (lx >= gx1 && lx <= gx2 && lz >= gz1 && lz <= gz2);
+                      let isGarageWall = inGarage && (lx === gx1 || lx === gx2 || lz === gz1 || lz === gz2);
+                      let isGarageDoor = (lz === gz1 && lx >= gx1 + 1 && lx <= gx2 - 1);
+
+                      // Ground
+                      if (isDriveway || isPorch) {
+                        this.setBlock(lx, 0, lz, TYPES.CONCRETE);
+                      } else if (!inHouse && !inGarage) {
+                        this.setBlock(lx, 0, lz, TYPES.GRASS);
+                      }
+
+                      // Main house
+                      if (inHouse) {
+                        for (let by = 1; by <= wallH; by++) {
+                          if (isDoor && by <= 4) continue;
+                          if (isHouseWall) {
+                            let isWindow = (by >= 3 && by <= 4 || by >= 6 && by <= 7) &&
+                              (lz !== hz1 && lz !== hz2 ? (lx === hx1 || lx === hx2) && (lz % 4 === 1 || lz % 4 === 2) :
+                              (lx % 4 === 1 || lx % 4 === 2)) && !isDoor;
+                            if (isWindow) {
+                              this.setBlock(lx, by, lz, TYPES.GLASS_BLUE);
+                            } else {
+                              let isCorner = (lx === hx1 || lx === hx2) && (lz === hz1 || lz === hz2);
+                              this.setBlock(lx, by, lz, isCorner ? TYPES.BRICK_RED : TYPES.PLASTER_WARM);
+                            }
+                          } else {
+                            if (by === 1) this.setBlock(lx, by, lz, TYPES.WOOD);
+                            if (by === 5) this.setBlock(lx, by, lz, TYPES.WOOD);
+                          }
+                        }
+                        if (isDoor) this.setBlock(lx, 5, lz, TYPES.WOOD);
+                        // Red peaked roof (ridge along X)
+                        let dzC = Math.abs(lz - hMidZ);
+                        let roofH = wallH + Math.floor((hz2 - hz1) / 2) + 1 - dzC;
+                        if (roofH > wallH) {
+                          for (let ry = wallH + 1; ry <= roofH; ry++) {
+                            if (lx === hx1 || lx === hx2 || ry === roofH) this.setBlock(lx, ry, lz, TYPES.BRICK_RED);
+                          }
+                        }
+                      }
+
+                      // Porch
+                      if (isPorch && !inHouse) {
+                        this.setBlock(lx, 1, lz, TYPES.WOOD);
+                        if ((lx === hx1 || lx === hx2) && lz === hz1 - 3) {
+                          for (let py = 2; py <= 4; py++) this.setBlock(lx, py, lz, TYPES.WOOD);
+                        }
+                        if (lz === hz1 - 1 || lz === hz1 - 3 || lx === hx1 || lx === hx2) {
+                          this.setBlock(lx, 4, lz, TYPES.WOOD);
+                        }
+                      }
+
+                      // Garage
+                      if (inGarage) {
+                        let garageH = 5;
+                        for (let by = 1; by <= garageH; by++) {
+                          if (isGarageDoor && by <= 4) continue;
+                          if (isGarageWall) this.setBlock(lx, by, lz, TYPES.PLASTER_WARM);
+                          else if (by === 1) this.setBlock(lx, by, lz, TYPES.CONCRETE);
+                        }
+                        this.setBlock(lx, 6, lz, TYPES.BRICK_RED);
+                      }
+
+                      // Palm tree
+                      if (lx === 14 && lz === 17) {
+                        for (let ty = 1; ty <= 7; ty++) this.setBlock(lx, ty, lz, TYPES.WOOD);
+                        for (let dx2 = -2; dx2 <= 2; dx2++) for (let dz2 = -2; dz2 <= 2; dz2++) {
+                          if (Math.abs(dx2) + Math.abs(dz2) <= 2 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
+                            this.setBlock(lx+dx2, 8, lz+dz2, TYPES.LEAVES);
+                        }
+                        for (let dx2 = -3; dx2 <= 3; dx2++) for (let dz2 = -3; dz2 <= 3; dz2++) {
+                          if (Math.abs(dx2) + Math.abs(dz2) === 3 && lx+dx2 >= 0 && lx+dx2 < CHUNK_SIZE && lz+dz2 >= 0 && lz+dz2 < CHUNK_SIZE)
+                            this.setBlock(lx+dx2, 7, lz+dz2, TYPES.LEAVES);
+                        }
+                      }
+
+                      // Fence around yard
+                      if (!inHouse && !isPorch && !inGarage && !isDriveway && lz > ROAD_WIDTH) {
+                        if (((lx === 8 || lx === 40) && lz > ROAD_WIDTH + 1 && lz < CHUNK_SIZE - 4) ||
+                            (lz === CHUNK_SIZE - 5 && lx > 8 && lx < 40)) {
+                          this.setBlock(lx, 1, lz, TYPES.WOOD);
+                        }
+                      }
+                    }
 
                     let subType = hash2D(this.cx * 13, this.cz * 17);
                     // Front yard fence along sidewalk edge
                     let nearSidewalk = (rxMod === ROAD_WIDTH + 2 || rxMod === CHUNK_SIZE - 3 || rzMod === ROAD_WIDTH + 2 || rzMod === CHUNK_SIZE - 3);
-                    if (nearSidewalk && hash2D(wx * 7, wz * 7) > 0.4) {
+                    if (!isAlley && nearSidewalk && hash2D(wx * 7, wz * 7) > 0.4) {
                       this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
                     }
 
-                    // Farm chunks: crops, hay bales, silos
-                    if (subType > 0.55 && subType <= 0.90) {
+                    // Farm chunks: crops, hay bales, silos (skip safe house)
+                    if (!isAlley && subType > 0.55 && subType <= 0.90) {
                       // Crop rows
                       if (lx > margin + 2 && lx < CHUNK_SIZE - margin - 2 && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2) {
                         if (lx % 2 === 0 && hash2D(wx + 20, wz + 20) > 0.3) {
@@ -4820,14 +4920,7 @@
                           this.setBlock(lx+1, sh+1, lz, TYPES.PLASTER_WARM); // head
                         }
                       }
-                      // Tractor (red vehicle-like block structure)
-                      if (lx === CHUNK_SIZE - margin - 4 && lz === CHUNK_SIZE - margin - 4) {
-                        this.setBlock(lx, subHill + 1, lz, TYPES.CONCRETE_DARK); // wheels
-                        this.setBlock(lx+1, subHill + 1, lz, TYPES.CONCRETE_DARK);
-                        this.setBlock(lx, subHill + 2, lz, TYPES.RED); // body
-                        this.setBlock(lx+1, subHill + 2, lz, TYPES.RED);
-                        this.setBlock(lx, subHill + 3, lz, TYPES.GLASS); // cab
-                      }
+                      // Tractors are now drivable vehicles (spawned in spawnTraffic)
                       // Fence around farm perimeter
                       if ((lx === margin + 2 || lx === CHUNK_SIZE - margin - 2) && lz > margin + 2 && lz < CHUNK_SIZE - margin - 2 && lz % 2 === 0) {
                         this.setBlock(lx, subHill + 1, lz, TYPES.WOOD);
@@ -4837,8 +4930,8 @@
                       }
                     }
 
-                    // School/Hospital chunks: playground, parking
-                    if (subType > 0.90 && subType <= 0.95) {
+                    // School/Hospital chunks: playground, parking (skip safe house)
+                    if (!isAlley && subType > 0.90 && subType <= 0.95) {
                       let isSchool = subType <= 0.915;
                       // Playground / parking area
                       if (lx > margin + 8 && lx < CHUNK_SIZE - margin - 4 && lz > margin + 1 && lz < margin + 5) {
@@ -4869,8 +4962,8 @@
                       }
                     }
 
-                    // Varied yard trees (different sizes and types) - biome-specific
-                    if (hash2D(wx + 10, wz + 10) > 0.993) {
+                    // Varied yard trees (different sizes and types) - biome-specific (skip safe house)
+                    if (!isAlley && hash2D(wx + 10, wz + 10) > 0.993) {
                       if (biome === 'DESERT') {
                         // Cactus
                         let cH = 3 + Math.floor(hash2D(wx + 15, wz + 15) * 3);
@@ -4962,28 +5055,7 @@
                   for (let hy = 1; hy <= hill; hy++) {
                     this.setBlock(lx, hy, lz, hy === hill ? TYPES.GRASS : TYPES.DIRT);
                   }
-                  // Farm animals grazing on the hills! Lots of them
-                  if (hill > 0 && hash2D(wx * 3 + 99, wz * 3 + 99) > 0.975) {
-                    let animalType = Math.floor(hash2D(wx * 7 + 33, wz * 7 + 33) * 1000) % 3;
-                    let sh = hill + 1;
-                    if (animalType === 0 && lx < CHUNK_SIZE - 3) {
-                      // Cow
-                      this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, sh, lz, TYPES.WHITE);
-                      this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+2, sh+1, lz, TYPES.CONCRETE_DARK);
-                    } else if (animalType === 1 && lx < CHUNK_SIZE - 2) {
-                      // Sheep
-                      this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.WHITE);
-                      this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+1, sh+1, lz, TYPES.CONCRETE_DARK);
-                    } else if (lx < CHUNK_SIZE - 2) {
-                      // Pig
-                      this.setBlock(lx, sh, lz, TYPES.PLASTER_WARM); this.setBlock(lx+1, sh, lz, TYPES.PLASTER_WARM);
-                      this.setBlock(lx+1, sh+1, lz, TYPES.PLASTER_WARM);
-                    }
-                  }
-                  // Occasional stone boulders for visual interest
-                  if (hill > 10 && hash2D(wx * 7, wz * 7) > 0.98) {
-                    this.setBlock(lx, hill + 1, lz, TYPES.STONE);
-                  }
+                  // Farm animals are now spawned as moving entities (see FarmAnimal class)
                 } else if (biome === 'FIELDS') {
                   // Flat farmland - very gentle terrain (0-2 blocks max)
                   let fieldH = Math.floor(smoothNoise(wx * 0.02, wz * 0.02) * 2);
@@ -4991,21 +5063,7 @@
                     for (let hy = 1; hy <= fieldH; hy++) this.setBlock(lx, hy, lz, hy === fieldH ? TYPES.GRASS : TYPES.DIRT);
                   }
                   hill = fieldH; // Override for tree/building placement
-                  // Farm animals
-                  if (hash2D(wx * 3 + 77, wz * 3 + 77) > (isMobileDevice ? 0.99 : 0.975)) {
-                    let animalType = Math.floor(hash2D(wx * 7 + 33, wz * 7 + 33) * 1000) % 3;
-                    let sh = hill + 1;
-                    if (animalType === 0 && lx < CHUNK_SIZE - 3) {
-                      this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.CONCRETE_DARK); this.setBlock(lx+2, sh, lz, TYPES.WHITE);
-                      this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+2, sh+1, lz, TYPES.CONCRETE_DARK);
-                    } else if (animalType === 1 && lx < CHUNK_SIZE - 2) {
-                      this.setBlock(lx, sh, lz, TYPES.WHITE); this.setBlock(lx+1, sh, lz, TYPES.WHITE);
-                      this.setBlock(lx, sh+1, lz, TYPES.WHITE); this.setBlock(lx+1, sh+1, lz, TYPES.CONCRETE_DARK);
-                    } else if (lx < CHUNK_SIZE - 2) {
-                      this.setBlock(lx, sh, lz, TYPES.PLASTER_WARM); this.setBlock(lx+1, sh, lz, TYPES.PLASTER_WARM);
-                      this.setBlock(lx+1, sh+1, lz, TYPES.PLASTER_WARM);
-                    }
-                  }
+                  // Farm animals are now spawned as moving entities (see FarmAnimal class)
                   // Field buildings: barns, schools, hospitals (per-chunk hash)
                   let fieldBuildHash = hash2D(this.cx * 41 + 5, this.cz * 41 + 5);
                   if (fieldBuildHash > 0.85) {
@@ -5023,16 +5081,7 @@
                       }
                     }
                   }
-                  // Tractors (small vehicles made of blocks)
-                  if (hash2D(wx * 5 + 55, wz * 5 + 55) > 0.998 && lx < CHUNK_SIZE - 4) {
-                    let sh = hill + 1;
-                    // Tractor body
-                    this.setBlock(lx, sh, lz, TYPES.RED); this.setBlock(lx+1, sh, lz, TYPES.RED); this.setBlock(lx+2, sh, lz, TYPES.RED);
-                    this.setBlock(lx, sh+1, lz, TYPES.RED); this.setBlock(lx+1, sh+1, lz, TYPES.CONCRETE_DARK);
-                    // Wheels
-                    this.setBlock(lx, sh, lz > 0 ? lz-1 : lz, TYPES.CONCRETE_DARK);
-                    this.setBlock(lx+2, sh, lz > 0 ? lz-1 : lz, TYPES.CONCRETE_DARK);
-                  }
+                  // Tractors are now drivable vehicles (spawned in spawnTraffic)
                 } else {
                   for (let hy = 1; hy <= hill; hy++) this.setBlock(lx, hy, lz, hy === hill ? groundType : subSoilType);
                 }
@@ -5214,6 +5263,65 @@
             }
           }
         }
+        // === CAVE STRUCTURES ===
+        if (caveData) {
+          let caveCX = Math.floor(CHUNK_SIZE / 2), caveCZ = Math.floor(CHUNK_SIZE / 2);
+          let caveW = 8, caveD = 10, caveH = 7;
+          let cX1 = caveCX - caveW, cX2 = caveCX + caveW, cZ1 = caveCZ - caveD, cZ2 = caveCZ + caveD;
+          // Flatten ground around cave
+          for (let fx = cX1 - 3; fx <= cX2 + 3; fx++) for (let fz = cZ1 - 3; fz <= cZ2 + 3; fz++) {
+            if (fx >= 0 && fx < CHUNK_SIZE && fz >= 0 && fz < CHUNK_SIZE) {
+              for (let fy = 2; fy <= 20; fy++) {
+                let k = fx + "," + fy + "," + fz;
+                if (this.blocks.has(k) && this.blocks.get(k) !== TYPES.ROAD) this.blocks.delete(k);
+              }
+            }
+          }
+          // Build cave walls, ceiling, floor
+          for (let cx = cX1; cx <= cX2; cx++) for (let cz = cZ1; cz <= cZ2; cz++) {
+            if (cx < 0 || cx >= CHUNK_SIZE || cz < 0 || cz >= CHUNK_SIZE) continue;
+            let isWallX = (cx === cX1 || cx === cX2);
+            let isWallZ = (cz === cZ1 || cz === cZ2);
+            let isDoor = (cz === cZ1 && Math.abs(cx - caveCX) <= 2);
+            // Arch entrance shape
+            let archH = isDoor ? caveH : caveH;
+            for (let cy = 1; cy <= caveH; cy++) {
+              if (isDoor && cy <= 4) continue; // Door opening (4 blocks high)
+              if (isWallX || isWallZ || cy === caveH) {
+                // Vary stone types for texture
+                let wx = startX + cx, wz = startZ + cz;
+                let oreRoll = hash2D(wx * 0.5 + cy * 3, wz * 0.5 + cy * 5);
+                let bt = TYPES.STONE;
+                if (oreRoll < 0.05) bt = TYPES.COAL_ORE;
+                else if (oreRoll < 0.08) bt = TYPES.IRON_ORE;
+                else if (oreRoll < 0.09) bt = TYPES.DIAMOND_ORE;
+                this.setBlock(cx, cy, cz, bt);
+              } else if (cy === 1) {
+                this.setBlock(cx, cy, cz, TYPES.STONE); // Floor
+              }
+            }
+          }
+          // Arch entrance decoration (stone pillars + arch above door)
+          for (let ay = 1; ay <= 5; ay++) {
+            if (cZ1 >= 0 && cZ1 < CHUNK_SIZE) {
+              if (caveCX - 3 >= 0) this.setBlock(caveCX - 3, ay, cZ1, TYPES.STONE);
+              if (caveCX + 3 < CHUNK_SIZE) this.setBlock(caveCX + 3, ay, cZ1, TYPES.STONE);
+            }
+          }
+          // Arch top
+          if (cZ1 >= 0 && cZ1 < CHUNK_SIZE) {
+            for (let ax = caveCX - 2; ax <= caveCX + 2; ax++) {
+              if (ax >= 0 && ax < CHUNK_SIZE) this.setBlock(ax, 5, cZ1, TYPES.STONE);
+            }
+          }
+          // Stalactites (random stone hanging from ceiling)
+          for (let sx = cX1 + 2; sx <= cX2 - 2; sx += 3) for (let sz = cZ1 + 3; sz <= cZ2 - 2; sz += 4) {
+            if (sx >= 0 && sx < CHUNK_SIZE && sz >= 0 && sz < CHUNK_SIZE) {
+              let stH = 1 + Math.floor(hash2D(sx * 7, sz * 7) * 2);
+              for (let sy = 0; sy < stH; sy++) this.setBlock(sx, caveH - sy, sz, TYPES.STONE);
+            }
+          }
+        }
         // === UNDERGROUND LAYERS (5 blocks deep with ore clusters) ===
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {
           for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -5221,8 +5329,8 @@
             // Check if there's a surface block at y=0 (not water/empty)
             let surfaceBlock = this.blocks.get(lx + ",0," + lz);
             if (!surfaceBlock || surfaceBlock === TYPES.WATER) continue;
-            // Generate underground layers (fewer on mobile)
-            let underDepth = isMobileDevice ? -2 : -4;
+            // Generate underground layers (5 blocks deep across the whole world)
+            let underDepth = -5;
             for (let dy = -1; dy >= underDepth; dy--) {
               let oreRoll = hash2D(wx * 0.37 + dy * 13.7, wz * 0.41 + dy * 7.3);
               let blockType = (dy === -1) ? TYPES.DIRT : TYPES.STONE;
@@ -5379,7 +5487,7 @@
               let pct = Math.min(Math.floor((carparkBlocksDestroyed / target) * 100), 100);
               document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: ' + Math.min(carparkBlocksDestroyed, target) + '/' + target + ' blocks';
               document.getElementById('demo-fill').style.height = pct + '%';
-              document.getElementById('demo-pct').innerText = Math.min(carparkBlocksDestroyed, target) + '/' + target;
+              document.getElementById('demo-pct').innerText = pct + '%';
               if (carparkBlocksDestroyed >= target) triggerMissionSuccess();
             }
           }
@@ -5410,6 +5518,7 @@
         let targetDir = getLaneDirection(this.pos);
         if (targetDir) this.yaw = Math.atan2(-targetDir.x, -targetDir.z);
 
+        this.isTractor = (type === 'TRACTOR');
         if (type === 'PLANE') {
           this.voxelGroup = new VoxelPlane(color);
         } else if (type === 'TANK') {
@@ -5419,6 +5528,7 @@
           if (type === 'COP') modelType = 'COP_CAR';
           if (type === 'ARMY') modelType = 'ARMY_CAR';
           if (type === 'BOAT') modelType = 'BOAT';
+          if (type === 'TRACTOR') modelType = 'TRACTOR';
           this.voxelGroup = new VoxelCar(modelType, color);
         }
         this.mesh = this.voxelGroup.group;
@@ -5505,10 +5615,10 @@
           this.vel.y -= 12 * dt; // Gentle gravity for flying car
           this.isFlying = true;
         }
-        // Sports car: extra speed
-        let extraSpeed = this.isSportsCar ? 1.5 : 1.0;
-        if (useNOS && this.nos > 0 && !inWater && !this.isFlyingCar) { speedMult = 2.0 * extraSpeed; this.nos -= 30 * dt; }
-        else if (this.nos < 100) { this.nos += 10 * dt; }
+        // Sports car: extra speed, Tractor: slower but steady
+        let extraSpeed = this.isSportsCar ? 1.5 : (this.isTractor ? 0.6 : 1.0);
+        if (useNOS && this.nos > 0 && !inWater && !this.isFlyingCar) { speedMult = 2.4 * extraSpeed; this.nos -= 30 * dt; this._nosActive = true; }
+        else { this._nosActive = false; if (this.nos < 100) this.nos += 10 * dt; }
         speedMult *= extraSpeed;
 
         let accelBase = isMobileDevice ? 55 : 55; // Same acceleration on both platforms
@@ -5567,6 +5677,16 @@
           let rlZ = this.pos.z - Math.sin(this.yaw) * 0.7 + Math.cos(this.yaw) * 1.2;
           spawnSkidMark(rlX, rlZ, this.yaw, 0.25);
         }
+        // NOS skid marks + smoke when boosting
+        if (this._nosActive && onGround && !this.isDead && !inWater) {
+          let rlX = this.pos.x + Math.cos(this.yaw) * 0.7 + Math.sin(this.yaw) * 1.2;
+          let rlZ = this.pos.z - Math.sin(this.yaw) * 0.7 + Math.cos(this.yaw) * 1.2;
+          let rrX = this.pos.x - Math.cos(this.yaw) * 0.7 + Math.sin(this.yaw) * 1.2;
+          let rrZ = this.pos.z + Math.sin(this.yaw) * 0.7 + Math.cos(this.yaw) * 1.2;
+          spawnSkidMark(rlX, rlZ, this.yaw, 0.5);
+          spawnSkidMark(rrX, rrZ, this.yaw, 0.5);
+          if (Math.random() < 0.4) spawnPhysicsParticle(this.pos.x, this.pos.y - 0.3, this.pos.z, 'SMOKE', null, true);
+        }
         
         let stepX = this.vel.x * dt, stepY = this.vel.y * dt, stepZ = this.vel.z * dt;
         let nextX = this.pos.x + stepX, nextY = this.pos.y + stepY, nextZ = this.pos.z + stepZ;
@@ -5574,10 +5694,29 @@
         
         let hitBuilding = false, speedMag = Math.sqrt(this.vel.x * this.vel.x + this.vel.z * this.vel.z);
         let isPlayerAction = (this === currentVehicle);
+        // Tractors climb hills: check if blocks ahead are climbable (1-2 blocks up)
+        if (this.isTractor && speedMag > 1) {
+          for (let bx = -1; bx <= 1; bx++) for (let bz = -1; bz <= 1; bz++) {
+            let checkBlock = getBlock(nextX + bx, nextY + 1, nextZ + bz);
+            if (checkBlock !== TYPES.EMPTY && checkBlock !== TYPES.ROAD && checkBlock !== TYPES.WATER) {
+              // Check if we can climb over (empty 2 blocks above)
+              let above1 = getBlock(nextX + bx, nextY + 2, nextZ + bz);
+              let above2 = getBlock(nextX + bx, nextY + 3, nextZ + bz);
+              if (above1 === TYPES.EMPTY && above2 === TYPES.EMPTY) {
+                nextY += 1.2; this.vel.y = Math.max(this.vel.y, 4);
+              }
+            }
+          }
+        }
         for (let bx = -1; bx <= 1; bx += 2) {
           for (let bz = -1; bz <= 1; bz += 2) {
             let bType = getBlock(nextX + bx, nextY + 1, nextZ + bz);
             if (bType !== TYPES.EMPTY && bType !== TYPES.ROAD && bType !== TYPES.WATER) {
+              // Tractors ignore gentle slopes (1-block walls) — only stop at tall walls
+              if (this.isTractor) {
+                let above = getBlock(nextX + bx, nextY + 2, nextZ + bz);
+                if (above === TYPES.EMPTY) { nextY += 1; continue; }
+              }
               if (speedMag > 15) {
                 let blast = Math.min(4, Math.floor(speedMag / 10));
                 for (let dx = -blast; dx <= blast; dx++) {
@@ -5903,6 +6042,115 @@
       constructor(x, z) { super('ROBBER', x, z); this.state = 'WAITING'; }
     }
 
+    // === FARM ANIMALS (moving entities) ===
+    let farmAnimals = [];
+    class FarmAnimal {
+      constructor(type, x, z) {
+        this.type = type; // COW, PIG, SHEEP, CHICKEN
+        this.pos = new THREE.Vector3(x, 1, z);
+        this.vel = new THREE.Vector3();
+        this.yaw = Math.random() * Math.PI * 2;
+        this.wanderTimer = 2 + Math.random() * 5;
+        this.group = new THREE.Group();
+        let mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 });
+        if (type === 'COW') {
+          let body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 2.0), mat(0xf5f5f0));
+          body.position.set(0, 0.7, 0); this.group.add(body);
+          let head = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.7), mat(0xf5f5f0));
+          head.position.set(0, 1.0, -1.1); this.group.add(head);
+          let spot1 = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.8), mat(0x2a2a2a));
+          spot1.position.set(0.3, 1.0, 0.3); this.group.add(spot1);
+          let spot2 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.6), mat(0x2a2a2a));
+          spot2.position.set(-0.2, 0.8, -0.4); this.group.add(spot2);
+          for (let lx of [-0.4, 0.4]) for (let lz of [-0.6, 0.6]) {
+            let leg = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), mat(0xf5f5f0));
+            leg.position.set(lx, 0.05, lz); this.group.add(leg);
+          }
+          this.speed = 1.0;
+        } else if (type === 'PIG') {
+          let body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.7, 1.4), mat(0xf0a0a0));
+          body.position.set(0, 0.55, 0); this.group.add(body);
+          let head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.5), mat(0xf0a0a0));
+          head.position.set(0, 0.65, -0.8); this.group.add(head);
+          let snout = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.15), mat(0xe08080));
+          snout.position.set(0, 0.55, -1.05); this.group.add(snout);
+          for (let lx of [-0.25, 0.25]) for (let lz of [-0.4, 0.4]) {
+            let leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.35, 0.2), mat(0xf0a0a0));
+            leg.position.set(lx, 0.0, lz); this.group.add(leg);
+          }
+          this.speed = 1.2;
+        } else if (type === 'SHEEP') {
+          let body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.9, 1.4), mat(0xf0f0f0));
+          body.position.set(0, 0.65, 0); this.group.add(body);
+          let head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), mat(0x888888));
+          head.position.set(0, 0.8, -0.85); this.group.add(head);
+          for (let lx of [-0.3, 0.3]) for (let lz of [-0.45, 0.45]) {
+            let leg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.4, 0.2), mat(0x444444));
+            leg.position.set(lx, 0.0, lz); this.group.add(leg);
+          }
+          this.speed = 0.9;
+        } else { // CHICKEN
+          let body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.7), mat(0xf5f5f0));
+          body.position.set(0, 0.45, 0); this.group.add(body);
+          let head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), mat(0xf5f5f0));
+          head.position.set(0, 0.75, -0.35); this.group.add(head);
+          let beak = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.15), mat(0xffaa00));
+          beak.position.set(0, 0.7, -0.55); this.group.add(beak);
+          let comb = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.1), mat(0xdd2222));
+          comb.position.set(0, 0.9, -0.35); this.group.add(comb);
+          let legL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), mat(0xffaa00));
+          legL.position.set(-0.12, 0.05, 0); this.group.add(legL);
+          let legR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), mat(0xffaa00));
+          legR.position.set(0.12, 0.05, 0); this.group.add(legR);
+          this.speed = 1.5;
+        }
+        this.group.position.copy(this.pos);
+        scene.add(this.group);
+      }
+      update(dt) {
+        this.wanderTimer -= dt;
+        if (this.wanderTimer <= 0) {
+          this.yaw += (Math.random() - 0.5) * Math.PI * 1.2;
+          this.wanderTimer = 3 + Math.random() * 6;
+        }
+        let fwd = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+        this.vel.x = fwd.x * this.speed; this.vel.z = fwd.z * this.speed;
+        // Gravity
+        this.vel.y -= 30 * dt;
+        let floorY = -3;
+        for (let y = Math.floor(this.pos.y + 1); y >= -3; y--) {
+          let b = getBlock(this.pos.x, y, this.pos.z);
+          if (b !== TYPES.EMPTY && b !== TYPES.WATER) { floorY = y; break; }
+        }
+        // Wall collision
+        let stepX = this.vel.x * dt, stepZ = this.vel.z * dt;
+        let cy = Math.floor(this.pos.y + 0.5);
+        if (getBlock(this.pos.x + stepX, cy, this.pos.z) !== TYPES.EMPTY) { stepX = 0; this.yaw += Math.PI / 2; this.wanderTimer = 0; }
+        if (getBlock(this.pos.x, cy, this.pos.z + stepZ) !== TYPES.EMPTY) { stepZ = 0; this.yaw += Math.PI / 2; this.wanderTimer = 0; }
+        let nextY = this.pos.y + this.vel.y * dt;
+        if (nextY - 0.3 <= floorY) { nextY = floorY + 0.3; this.vel.y = 0; }
+        this.pos.set(this.pos.x + stepX, nextY, this.pos.z + stepZ);
+        this.group.position.copy(this.pos);
+        this.group.rotation.y = this.yaw;
+      }
+      dispose() { scene.remove(this.group); }
+    }
+
+    // === CAVE LOCATIONS (10 caves across natural areas) ===
+    const CAVE_LOCATIONS = [
+      { cx: -8, cz: -3, name: 'Hillside Cave' },     // SUBURBAN west
+      { cx: -12, cz: -5, name: 'Mountain Cave' },     // RURAL southwest
+      { cx: -14, cz: -8, name: 'Deep Cave' },         // Near mountains
+      { cx: 10, cz: -12, name: 'Northern Cave' },     // RURAL north
+      { cx: -6, cz: 8, name: 'Southern Cave' },       // SUBURBAN south
+      { cx: 12, cz: 6, name: 'Eastern Cave' },        // RURAL east
+      { cx: -10, cz: 4, name: 'Western Cave' },       // RURAL west
+      { cx: -15, cz: -2, name: 'Dark Cave' },         // Near grassy mountains
+      { cx: 8, cz: -8, name: 'Ridge Cave' },          // RURAL northeast
+      { cx: -4, cz: -10, name: 'Valley Cave' },       // SUBURBAN north
+    ];
+    let caveSpawnCooldowns = {}; // track cave enemy spawns
+
     function spawnTraffic() {
       vehicles = vehicles.filter(v => {
         if (v === currentVehicle) return true; // Never cull the vehicle the player is driving
@@ -5967,10 +6215,58 @@
           boatCount++;
         }
       }
-      let maxCivilians = isMobileDevice ? 15 : 20;
+      let maxCivilians = isMobileDevice ? 20 : 25;
       while (peds.filter(p => p.type === 'CIVILIAN').length < maxCivilians) {
         let r = CHUNK_SIZE / 2 + Math.random() * CHUNK_SIZE, angle = Math.random() * Math.PI * 2;
         peds.push(new Pedestrian('CIVILIAN', player.pos.x + Math.cos(angle) * r, player.pos.z + Math.sin(angle) * r));
+      }
+      // Spawn farm animals in rural/suburban/grassy areas
+      farmAnimals = farmAnimals.filter(a => {
+        if (a.pos.distanceToSquared(player.pos) > CHUNK_SIZE * CHUNK_SIZE * 12) { a.dispose(); return false; }
+        return true;
+      });
+      let maxAnimals = isMobileDevice ? 8 : 14;
+      let pZone = getZone(player.pos.x, player.pos.z);
+      let pBiome = getBiome(player.pos.x, player.pos.z);
+      let inNature = (pZone === 'RURAL' || pZone === 'SUBURBAN' || pBiome === 'GRASSY_MOUNTAIN' || pBiome === 'FIELDS');
+      if (inNature && farmAnimals.length < maxAnimals) {
+        let types = ['COW', 'PIG', 'SHEEP', 'CHICKEN'];
+        let r = CHUNK_SIZE / 2 + Math.random() * CHUNK_SIZE * 1.5, angle = Math.random() * Math.PI * 2;
+        let ax = player.pos.x + Math.cos(angle) * r, az = player.pos.z + Math.sin(angle) * r;
+        let aZone = getZone(ax, az);
+        if (aZone !== 'DOWNTOWN' && aZone !== 'OCEAN' && aZone !== 'AIRPORT') {
+          farmAnimals.push(new FarmAnimal(types[Math.floor(Math.random() * types.length)], ax, az));
+        }
+      }
+      // Check cave proximity and spawn enemies
+      for (let cave of CAVE_LOCATIONS) {
+        let cwx = cave.cx * CHUNK_SIZE + CHUNK_SIZE / 2;
+        let cwz = cave.cz * CHUNK_SIZE + CHUNK_SIZE / 2;
+        let distSq = (player.pos.x - cwx) * (player.pos.x - cwx) + (player.pos.z - cwz) * (player.pos.z - cwz);
+        let caveKey = cave.cx + ',' + cave.cz;
+        if (distSq < 225 && !caveSpawnCooldowns[caveKey]) { // Within 15 blocks
+          caveSpawnCooldowns[caveKey] = Date.now();
+          // Spawn 2-3 enemies inside cave
+          let numEnemies = 2 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < numEnemies; i++) {
+            let ex = cwx + (Math.random() - 0.5) * 8;
+            let ez = cwz + (Math.random() - 0.5) * 10;
+            let type = Math.random() < 0.4 ? 'ARMY' : 'COP';
+            peds.push(new Pedestrian(type, ex, ez));
+          }
+          // Spawn 1 vehicle near entrance
+          let vx = cwx, vz = cwz - CHUNK_SIZE / 2 + 2;
+          if (Math.random() < 0.3) {
+            vehicles.push(new Vehicle('TANK', vx, vz, 0x3b4d2e));
+          } else {
+            vehicles.push(new Vehicle('ARMY', vx, vz, 0x3b4d2e));
+          }
+          showFloatingText('Enemies in the cave!', player.pos);
+        }
+        // Reset cooldown after 60 seconds
+        if (caveSpawnCooldowns[caveKey] && Date.now() - caveSpawnCooldowns[caveKey] > 60000) {
+          delete caveSpawnCooldowns[caveKey];
+        }
       }
     }
 
@@ -5998,6 +6294,27 @@
             vehicles.push(car);
           }
         }
+      }
+    }
+
+    let safeHouseCarsSpawned = false;
+    function spawnSafeHouseCars() {
+      if (safeHouseCarsSpawned) return;
+      let ck = '-11,0';
+      if (!activeChunks.has(ck)) return;
+      safeHouseCarsSpawned = true;
+      let colors = [0x882222, 0x224488, 0x888888];
+      let positions = [
+        { x: ALLEY_POS.x - 4, z: ALLEY_POS.z - 18, yaw: Math.PI * 0.5 },
+        { x: ALLEY_POS.x + 3, z: ALLEY_POS.z - 18, yaw: Math.PI * 0.5 },
+        { x: ALLEY_POS.x + 10, z: ALLEY_POS.z - 5, yaw: 0 }
+      ];
+      for (let i = 0; i < positions.length; i++) {
+        let c = new Vehicle('CIVILIAN', positions[i].x, positions[i].z, colors[i]);
+        c.parked = true; c.vel.set(0, 0, 0); c.yaw = positions[i].yaw;
+        c.mesh.position.copy(c.pos);
+        if (c.mesh.rotation) c.mesh.rotation.y = c.yaw;
+        vehicles.push(c);
       }
     }
 
@@ -6571,9 +6888,9 @@
         // Horizontal angle on screen (-PI to PI, 0 = ahead)
         let screenAngle = Math.atan2(-crossLR, dotForward);
 
-        // Arrow tilts: pointing up when target is ahead, tilts back when behind
-        // Map dotForward to a pitch: ahead=tilt up (0.4), behind=tilt back (-0.6)
-        let pitchAngle = dotForward * 0.5; // positive = up tilt, negative = back tilt
+        // Arrow tilts: point diagonally up+forward when target is ahead, tilt back when behind
+        // Ahead: pitch forward 0.4–0.9 rad (23–52°), behind: tilt back up to -0.7 rad
+        let pitchAngle = dotForward > 0 ? 0.4 + dotForward * 0.5 : dotForward * 0.7;
 
         // Build rotation: first face camera, then rotate for direction
         let arrowQuat = new THREE.Quaternion();
@@ -6594,11 +6911,17 @@
     }
 
     let fullMapOpen = false;
+    let mapZoom = 1, mapPanX = 0, mapPanY = 0;
+    let _mapPinchDist = 0, _mapPinching = false;
     function toggleFullMap() {
       fullMapOpen = !fullMapOpen;
       let el = document.getElementById('fullscreen-map');
       if (fullMapOpen) {
         el.classList.add('active');
+        mapZoom = 1; mapPanX = 0; mapPanY = 0;
+        let canvas = document.getElementById('fullmap-canvas');
+        canvas.style.transform = '';
+        document.getElementById('fullmap-hint').innerText = isMobileDevice ? 'Tap to close' : 'Press M or tap to close';
         drawFullMap();
       } else {
         el.classList.remove('active');
@@ -6821,7 +7144,13 @@
 
     // Click/tap handlers for fullscreen map
     document.getElementById('fullscreen-map').addEventListener('click', () => { if (fullMapOpen) toggleFullMap(); });
-    document.getElementById('fullscreen-map').addEventListener('touchend', e => { e.preventDefault(); if (fullMapOpen) toggleFullMap(); });
+    // Pinch-to-zoom on map canvas
+    let _mapCanvas = document.getElementById('fullmap-canvas');
+    _mapCanvas.addEventListener('touchstart', e => { e.stopPropagation(); if (e.touches.length === 2) { _mapPinching = true; _mapPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); } }, { passive: true });
+    _mapCanvas.addEventListener('touchmove', e => { if (_mapPinching && e.touches.length === 2) { e.preventDefault(); e.stopPropagation(); let newDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); let scale = newDist / _mapPinchDist; mapZoom = Math.max(0.5, Math.min(4, mapZoom * scale)); _mapPinchDist = newDist; _mapCanvas.style.transform = 'scale(' + mapZoom + ')'; } }, { passive: false });
+    _mapCanvas.addEventListener('touchend', e => { if (_mapPinching) { _mapPinching = false; if (e.touches.length === 0 && mapZoom <= 1.05) { /* Only close if not zoomed */ } e.stopPropagation(); return; } if (fullMapOpen) toggleFullMap(); });
+    // Tap outside map canvas closes it
+    document.getElementById('fullscreen-map').addEventListener('touchend', e => { if (e.target.id !== 'fullmap-canvas' && fullMapOpen && !_mapPinching) { e.preventDefault(); toggleFullMap(); } });
     // Minimap tap to open fullscreen map (mobile)
     document.getElementById('minimap-container').addEventListener('click', e => { e.stopPropagation(); if (isPlaying && !isPaused) toggleFullMap(); });
     document.getElementById('minimap-container').addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); if (isPlaying && !isPaused) toggleFullMap(); });
@@ -6912,6 +7241,8 @@
         let camZ = player.pos.z + Math.sin(time * spinSpeed) * spinDist;
         camera.position.set(camX, player.pos.y + 4, camZ);
         camera.lookAt(player.pos.clone().add(new THREE.Vector3(0, 2, 0)));
+        skybox.position.copy(camera.position);
+        updateChunks(); // Keep chunks loaded around player during success screen
       }
       if (isPlaying && !isPaused) {
         skybox.position.copy(camera.position); drawMinimap();
@@ -7048,13 +7379,22 @@
         showPhoneMessage(isMobileDevice ? "Boss: You're at the shop. Get inside and buy the Rocket Launcher! Press Shop to enter." : "Boss: You're at the shop. Get inside and buy the Rocket Launcher! Press Enter to enter.", 10000);
         mission.state = 'ENTER_STORE';
       }
-      if (mission.active && mission.state === 'DRIVE_TO_ALLEY' && pPos.distanceToSquared(ALLEY_POS) < 225) {
+      if (mission.active && mission.state === 'DRIVE_TO_ALLEY' && pPos.distanceToSquared(ALLEY_POS) < 100) {
         // Near safe house - set wanted to 0 instantly (safe zone)
         wantedLevel = 0; wantedTimer = 20; chaos = 0; copsKilled = 0; updateHUD();
         document.querySelectorAll('#wanted-level span').forEach(s => { s.style.opacity = '1'; s.style.animation = ''; });
         mission.state = 'AT_SAFE_HOUSE';
-        showPhoneMessage("Great job, you made it to the safe house. Now lay low.", 10000);
-        setTimeout(() => { if (mission.state === 'AT_SAFE_HOUSE') triggerMissionSuccess(); }, 10000);
+        mission.safeHouseTimer = 0;
+        showPhoneMessage("Great job, you made it to the safe house. Now lay low for 5 seconds.", 8000);
+      }
+      if (mission.active && mission.state === 'AT_SAFE_HOUSE') {
+        if (pPos.distanceToSquared(ALLEY_POS) < 225) {
+          mission.safeHouseTimer = (mission.safeHouseTimer || 0) + dt;
+          if (mission.safeHouseTimer >= 5) triggerMissionSuccess();
+        } else {
+          // Player left the safe zone, reset timer
+          mission.safeHouseTimer = 0;
+        }
       }
       // Mission 5: Carpark block destruction - proximity triggers the mission phase
       if (mission.active && mission.state === 'GO_TO_CARPARK' && pPos.distanceToSquared(CARPARK_POS) < 900) {
@@ -7062,7 +7402,7 @@
         document.getElementById('objective-text').innerText = 'DESTROY THE CAR PARK: 0/200 blocks';
         document.getElementById('demolition-progress').style.display = 'block';
         document.getElementById('demo-fill').style.height = '0%';
-        document.getElementById('demo-pct').innerText = '0/200';
+        document.getElementById('demo-pct').innerText = '0%';
         showPhoneMessage("Boss: You're at the carpark. Blast a hole in it! Use your rocket launcher and destroy 200 blocks!", 15000);
       }
       if (mission.active && mission.state === 'FLY_TO_ISLAND' && currentVehicle && currentVehicle.type === 'PLANE') {
@@ -7214,10 +7554,17 @@
         } else {
           let speed = currentVehicle.vel.length();
           let isPlane = currentVehicle.type === 'PLANE';
-          let camDist = isPlane ? (20 + speed * 0.15) : (isMobileDevice ? (8 + speed * 0.06) : (12 + speed * 0.1));
+          let nosZoom = currentVehicle._nosActive ? 3 : 0; // Pull camera back during NOS
+          let camDist = isPlane ? (20 + speed * 0.15) : (isMobileDevice ? (8 + speed * 0.06 + nosZoom) : (12 + speed * 0.1 + nosZoom));
           let camHeight = isPlane ? (8 + speed * 0.1) : (isMobileDevice ? (3.5 + speed * 0.03) : (5 + speed * 0.05));
           const camOffset = new THREE.Vector3(Math.sin(currentVehicle.yaw) * camDist, camHeight, Math.cos(currentVehicle.yaw) * camDist);
           let camTarget = currentVehicle.pos.clone().add(new THREE.Vector3(0, isPlane ? 3 : 2, 0));
+          // NOS car shake effect (subtle)
+          if (currentVehicle._nosActive) {
+            camTarget.x += (Math.random() - 0.5) * 0.06;
+            camTarget.y += (Math.random() - 0.5) * 0.03;
+            camTarget.z += (Math.random() - 0.5) * 0.06;
+          }
           let idealCamPos = isPlane ? camTarget.clone().add(camOffset) : getCameraPos(camTarget, currentVehicle.pos.clone().add(camOffset));
           camera.position.lerp(idealCamPos, Math.min(1.0, (isPlane ? 6 : 10) * dt));
           camera.lookAt(camTarget);
@@ -7261,10 +7608,12 @@
           buildBtn.style.display = 'flex';
           if (buildMode) {
             buildBtn.innerText = 'Shoot';
-            buildBtn.style.background = '#cc2222';
+            buildBtn.style.background = 'rgba(204,34,34,0.45)';
+            buildBtn.style.borderColor = 'rgba(204,34,34,0.8)';
           } else {
             buildBtn.innerText = 'Build';
-            buildBtn.style.background = '#2255cc';
+            buildBtn.style.background = 'rgba(34,85,204,0.45)';
+            buildBtn.style.borderColor = 'rgba(34,85,204,0.8)';
           }
         }
 
@@ -7325,7 +7674,7 @@
       dirLight.target.position.copy(targetPos);
       let trafficLightIsRed = (Date.now() % 10000) < 5000;
       
-      if (Math.random() < 0.01) { spawnTraffic(); spawnCarparkCars(); }
+      if (Math.random() < 0.01) { spawnTraffic(); spawnCarparkCars(); spawnSafeHouseCars(); }
       
       // Manage Gradual Cop Spawning based on timer rather than instantly clustering
       if (wantedLevel > 0) {
@@ -7395,6 +7744,7 @@
         veh.updatePhysics(dt, accel, steer, useNOS);
       });
       peds.forEach(p => p.update(dt));
+      farmAnimals.forEach(a => a.update(dt));
       for (let i = projectiles.length - 1; i >= 0; i--) { if (projectiles[i].update(dt)) projectiles.splice(i, 1); }
       for (let p of particlePool) {
         if (p.active) {
